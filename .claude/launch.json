@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "envest-mcp",
+      "runtimeExecutable": "C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+      "runtimeArgs": ["-m", "scada_mcp.combined", "--host", "127.0.0.1", "--port", "8001", "--require-token"],
+      "port": 8001,
+      "cwd": "mcps/scada"
+    }
+  ]
+}

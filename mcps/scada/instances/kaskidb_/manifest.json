@@ -1,0 +1,236 @@
+{
+  "_schema": "scada_mcp_manifest",
+  "version": 1,
+  "title": "SCADA MCP manifest (kaskidb_)",
+  "purpose": "Kaski lokal db si.",
+  "tool_groups": [
+    {
+      "id": "routing",
+      "title_tr": "Yönlendirme / belirsizlik çözümü",
+      "tools": [
+        "kaskidb_get_korubin_ui_and_tool_routing_tr",
+        "kaskidb_get_scada_site_routing_hints",
+        "kaskidb_get_scada_mcp_manifest",
+        "kaskidb_get_scada_tag_naming_defaults_tr",
+        "kaskidb_smart_tool_select"
+      ]
+    },
+    {
+      "id": "nodes",
+      "title_tr": "Node / nokta sayımı",
+      "tools": []
+    },
+    {
+      "id": "nodes",
+      "title_tr": "Node / topo",
+      "tools": [
+        "kaskidb_get_node_counts",
+        "kaskidb_list_nodes",
+        "kaskidb_find_nodes_by_keywords",
+        "kaskidb_get_node",
+        "kaskidb_list_product_types",
+        "kaskidb_get_node_scada_context",
+        "kaskidb_get_node_panel_settings_guide",
+        "kaskidb_get_operational_engineering_hints"
+      ]
+    },
+    {
+      "id": "scada_live",
+      "title_tr": "SCADA canlı veri (_tagoku)",
+      "tools": [
+        "kaskidb_get_scada_system_stats",
+        "kaskidb_get_device_data",
+        "kaskidb_get_device_tag_values",
+        "kaskidb_list_live_tag_across_nodes",
+        "kaskidb_search_tags"
+      ]
+    },
+    {
+      "id": "concepts",
+      "title_tr": "Kavram rehberi",
+      "tools": [
+        "kaskidb_get_korubin_data_concepts"
+      ]
+    },
+    {
+      "id": "semantics",
+      "title_tr": "Panel semantik",
+      "tools": [
+        "kaskidb_get_nview_equipment_profile",
+        "kaskidb_get_scada_semantics",
+        "kaskidb_get_view_tag_meanings",
+        "kaskidb_get_counter_semantics",
+        "kaskidb_resolve_semantic_tag_candidates"
+      ]
+    },
+    {
+      "id": "alarms",
+      "title_tr": "Alarmlar",
+      "tools": [
+        "kaskidb_list_alarms",
+        "kaskidb_get_active_alarms",
+        "kaskidb_get_alarm_subscribers"
+      ]
+    },
+    {
+      "id": "schema",
+      "title_tr": "DB şema / güvenli sorgu",
+      "tools": [
+        "kaskidb_get_database_schema",
+        "kaskidb_get_table_info",
+        "kaskidb_run_safe_query"
+      ]
+    },
+    {
+      "id": "semantics",
+      "title_tr": "Panel semantik / şablon",
+      "tools": [
+        "kaskidb_list_point_display_templates",
+        "kaskidb_read_point_display_template",
+        "kaskidb_list_point_display_files",
+        "kaskidb_search_point_display_templates",
+        "kaskidb_get_panel_url_for_template",
+        "kaskidb_extract_menu_links",
+        "kaskidb_summarize_point_display_template"
+      ]
+    },
+    {
+      "id": "alarms_stats",
+      "title_tr": "Alarm istatistikleri",
+      "tools": [
+        "kaskidb_get_alarm_statistics"
+      ]
+    },
+    {
+      "id": "kepware_more",
+      "title_tr": "Kepware cihaz / sürücü",
+      "tools": [
+        "kaskidb_list_channel_devices",
+        "kaskidb_get_channel_device_detail",
+        "kaskidb_get_device_connection_params",
+        "kaskidb_list_channel_types",
+        "kaskidb_list_device_types",
+        "kaskidb_get_device_type_tags",
+        "kaskidb_get_device_individual_tags",
+        "kaskidb_list_device_status_codes",
+        "kaskidb_list_drivers",
+        "kaskidb_get_driver_detail",
+        "kaskidb_list_service_instances",
+        "kaskidb_get_service_activities",
+        "kaskidb_get_device_all_tags",
+        "kaskidb_get_node_all_tags",
+        "kaskidb_get_tag_address"
+      ]
+    },
+    {
+      "id": "charts",
+      "title_tr": "Grafik (log)",
+      "tools": [
+        "kaskidb_get_chart_data",
+        "kaskidb_get_multi_chart_data",
+        "kaskidb_get_node_log_chart_data",
+        "kaskidb_get_recent_log_chart_by_tag"
+      ]
+    },
+    {
+      "id": "node_logs",
+      "title_tr": "Node log tabloları",
+      "tools": [
+        "kaskidb_get_node_log_data",
+        "kaskidb_get_node_log_summary",
+        "kaskidb_get_node_log_latest_values"
+      ]
+    },
+    {
+      "id": "products",
+      "title_tr": "Ürün kılavuzu (JSON)",
+      "tools": [
+        "kaskidb_search_product_manual",
+        "kaskidb_get_product_specs",
+        "kaskidb_get_product_settings",
+        "kaskidb_get_product_troubleshoot",
+        "kaskidb_get_product_sensor_info"
+      ]
+    },
+    {
+      "id": "dashboard",
+      "title_tr": "Dashboard / özet",
+      "tools": [
+        "kaskidb_get_scada_summary",
+        "kaskidb_get_node_distribution",
+        "kaskidb_get_channel_device_statistics"
+      ]
+    },
+    {
+      "id": "admin_users",
+      "title_tr": "Kullanıcı / yetki",
+      "tools": [
+        "kaskidb_get_user_permissions",
+        "kaskidb_get_node_permissions",
+        "kaskidb_list_user_groups",
+        "kaskidb_get_group_members",
+        "kaskidb_list_users",
+        "kaskidb_get_user",
+        "kaskidb_search_users",
+        "kaskidb_get_user_stats"
+      ]
+    },
+    {
+      "id": "tags_meta",
+      "title_tr": "Tag link / clone",
+      "tools": [
+        "kaskidb_list_tag_links",
+        "kaskidb_list_tag_clones"
+      ]
+    },
+    {
+      "id": "logs",
+      "title_tr": "Log parametreleri",
+      "tools": [
+        "kaskidb_list_log_params"
+      ]
+    },
+    {
+      "id": "kepware",
+      "title_tr": "Kepware / veri değişim",
+      "tools": [
+        "kaskidb_check_exchanger_status"
+      ]
+    },
+    {
+      "id": "dma",
+      "title_tr": "DMA / mevsimsel analiz",
+      "tools": [
+        "kaskidb_list_dma_station_nodes",
+        "kaskidb_analyze_dma_seasonal_demand",
+        "kaskidb_analyze_seasonal_level_profile"
+      ]
+    },
+    {
+      "id": "export_reports",
+      "title_tr": "Export / raporlar (Excel PDF CSV)",
+      "tools": [
+        "kaskidb_export_log_data",
+        "kaskidb_generate_scada_report",
+        "kaskidb_generate_node_report",
+        "kaskidb_export_custom_data",
+        "kaskidb_export_active_alarms"
+      ]
+    },
+    {
+      "id": "analytics",
+      "title_tr": "Trend / karşılaştırma analizi",
+      "tools": [
+        "kaskidb_compare_log_metrics",
+        "kaskidb_analyze_log_trend"
+      ]
+    },
+    {
+      "id": "ai_registry",
+      "title_tr": "AI modül / yetenek registry",
+      "tools": [
+        "kaskidb_get_korubin_ai_mcp_registry"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{% extends "layout.html" %}
+{% block content %}
+  <div class="card">
+    <div style="display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+      <h3>Edit instance: <code>{{ name }}</code></h3>
+      <a class="btn" href="/instances/{{ name }}">Back</a>
+    </div>
+    {% if error %}
+      <div class="error" style="margin-top:10px">{{ error }}</div>
+    {% endif %}
+    <form method="post" action="/instances/{{ name }}/edit">
+      <div class="grid2" style="margin-top:12px">
+        <div>
+          <label>MCP name</label>
+          <input name="mcp_name" value="{{ cfg.mcp_name }}" required />
+        </div>
+        <div>
+          <label>Tool prefix</label>
+          <input name="tool_prefix" value="{{ cfg.tool_prefix }}" required />
+        </div>
+      </div>
+
+      <div class="grid2" style="margin-top:12px">
+        <div>
+          <label>Panel base url</label>
+          <input name="panel_base_url" value="{{ cfg.panel_base_url or '' }}" />
+        </div>
+        <div>
+          <label>MCP version</label>
+          <input name="mcp_version" value="{{ cfg.mcp_version }}" />
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <label>MCP description</label>
+        <textarea name="mcp_description" required>{{ cfg.mcp_description }}</textarea>
+      </div>
+
+      <div style="margin-top:12px">
+        <label>MCP instructions</label>
+        <textarea name="mcp_instructions">{{ cfg.mcp_instructions or '' }}</textarea>
+      </div>
+
+      <h4 style="margin-top:14px">Database</h4>
+      <div class="grid3" style="margin-top:10px">
+        <div>
+          <label>Host</label>
+          <input name="db_host" value="{{ cfg.db.host if cfg.db else '' }}" required />
+        </div>
+        <div>
+          <label>Port</label>
+          <input name="db_port" value="{{ cfg.db.port if cfg.db else 3306 }}" required />
+        </div>
+        <div>
+          <label>DB name</label>
+          <input name="db_name" value="{{ cfg.db.dbname if cfg.db else '' }}" required />
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:10px">
+        <div>
+          <label>DB username</label>
+          <input name="db_user" value="{{ envvals.DB_USERNAME or (cfg.db.username if cfg.db else '') }}" required />
+        </div>
+        <div>
+          <label>DB password (leave blank to keep)</label>
+          <input name="db_pass" type="password" value="" />
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <label>Korubin klasörü (KORUBIN_POINT_DISPLAY_ROOT)</label>
+        <input
+          name="point_display_root"
+          value="{{ envvals.KORUBIN_POINT_DISPLAY_ROOT or default_point_display_root }}"
+          placeholder="{{ default_point_display_root }}"
+        />
+        <div class="muted" style="margin-top:6px">
+          Bu yol <code>app/views/point/display/common</code> klasörünü göstermelidir (içinde <code>a-kuyu-envest</code> gibi <code>nView</code> klasörleri bulunur).
+        </div>
+      </div>
+
+      <h4 style="margin-top:14px">Auth (ephemeral token)</h4>
+      <div class="grid2" style="margin-top:10px">
+        <div>
+          <label>Admin secret (leave blank to keep)</label>
+          <input name="admin_secret" type="password" value="" />
+        </div>
+        <div>
+          <label>Token secret (leave blank to keep)</label>
+          <input name="token_secret" type="password" value="" />
+        </div>
+      </div>
+
+      <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn primary" type="submit">Save</button>
+        <span class="muted">Kaydederken <code>manifest.json</code> içindeki tool isimleri prefix’e göre güncellenir.</span>
+      </div>
+    </form>
+  </div>
+{% endblock %}
+

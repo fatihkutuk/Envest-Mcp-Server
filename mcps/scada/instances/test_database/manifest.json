@@ -1,0 +1,236 @@
+{
+  "_schema": "scada_mcp_manifest",
+  "version": 1,
+  "title": "SCADA MCP manifest (test_database)",
+  "purpose": "Test DB Analysis",
+  "tool_groups": [
+    {
+      "id": "routing",
+      "title_tr": "Yönlendirme / belirsizlik çözümü",
+      "tools": [
+        "testdb_get_korubin_ui_and_tool_routing_tr",
+        "testdb_get_scada_site_routing_hints",
+        "testdb_get_scada_mcp_manifest",
+        "testdb_get_scada_tag_naming_defaults_tr",
+        "testdb_smart_tool_select"
+      ]
+    },
+    {
+      "id": "nodes",
+      "title_tr": "Node / nokta sayımı",
+      "tools": []
+    },
+    {
+      "id": "nodes",
+      "title_tr": "Node / topo",
+      "tools": [
+        "testdb_get_node_counts",
+        "testdb_list_nodes",
+        "testdb_find_nodes_by_keywords",
+        "testdb_get_node",
+        "testdb_list_product_types",
+        "testdb_get_node_scada_context",
+        "testdb_get_node_panel_settings_guide",
+        "testdb_get_operational_engineering_hints"
+      ]
+    },
+    {
+      "id": "scada_live",
+      "title_tr": "SCADA canlı veri (_tagoku)",
+      "tools": [
+        "testdb_get_scada_system_stats",
+        "testdb_get_device_data",
+        "testdb_get_device_tag_values",
+        "testdb_list_live_tag_across_nodes",
+        "testdb_search_tags"
+      ]
+    },
+    {
+      "id": "concepts",
+      "title_tr": "Kavram rehberi",
+      "tools": [
+        "testdb_get_korubin_data_concepts"
+      ]
+    },
+    {
+      "id": "semantics",
+      "title_tr": "Panel semantik",
+      "tools": [
+        "testdb_get_nview_equipment_profile",
+        "testdb_get_scada_semantics",
+        "testdb_get_view_tag_meanings",
+        "testdb_get_counter_semantics",
+        "testdb_resolve_semantic_tag_candidates"
+      ]
+    },
+    {
+      "id": "alarms",
+      "title_tr": "Alarmlar",
+      "tools": [
+        "testdb_list_alarms",
+        "testdb_get_active_alarms",
+        "testdb_get_alarm_subscribers"
+      ]
+    },
+    {
+      "id": "schema",
+      "title_tr": "DB şema / güvenli sorgu",
+      "tools": [
+        "testdb_get_database_schema",
+        "testdb_get_table_info",
+        "testdb_run_safe_query"
+      ]
+    },
+    {
+      "id": "semantics",
+      "title_tr": "Panel semantik / şablon",
+      "tools": [
+        "testdb_list_point_display_templates",
+        "testdb_read_point_display_template",
+        "testdb_list_point_display_files",
+        "testdb_search_point_display_templates",
+        "testdb_get_panel_url_for_template",
+        "testdb_extract_menu_links",
+        "testdb_summarize_point_display_template"
+      ]
+    },
+    {
+      "id": "alarms_stats",
+      "title_tr": "Alarm istatistikleri",
+      "tools": [
+        "testdb_get_alarm_statistics"
+      ]
+    },
+    {
+      "id": "kepware_more",
+      "title_tr": "Kepware cihaz / sürücü",
+      "tools": [
+        "testdb_list_channel_devices",
+        "testdb_get_channel_device_detail",
+        "testdb_get_device_connection_params",
+        "testdb_list_channel_types",
+        "testdb_list_device_types",
+        "testdb_get_device_type_tags",
+        "testdb_get_device_individual_tags",
+        "testdb_list_device_status_codes",
+        "testdb_list_drivers",
+        "testdb_get_driver_detail",
+        "testdb_list_service_instances",
+        "testdb_get_service_activities",
+        "testdb_get_device_all_tags",
+        "testdb_get_node_all_tags",
+        "testdb_get_tag_address"
+      ]
+    },
+    {
+      "id": "charts",
+      "title_tr": "Grafik (log)",
+      "tools": [
+        "testdb_get_chart_data",
+        "testdb_get_multi_chart_data",
+        "testdb_get_node_log_chart_data",
+        "testdb_get_recent_log_chart_by_tag"
+      ]
+    },
+    {
+      "id": "node_logs",
+      "title_tr": "Node log tabloları",
+      "tools": [
+        "testdb_get_node_log_data",
+        "testdb_get_node_log_summary",
+        "testdb_get_node_log_latest_values"
+      ]
+    },
+    {
+      "id": "products",
+      "title_tr": "Ürün kılavuzu (JSON)",
+      "tools": [
+        "testdb_search_product_manual",
+        "testdb_get_product_specs",
+        "testdb_get_product_settings",
+        "testdb_get_product_troubleshoot",
+        "testdb_get_product_sensor_info"
+      ]
+    },
+    {
+      "id": "dashboard",
+      "title_tr": "Dashboard / özet",
+      "tools": [
+        "testdb_get_scada_summary",
+        "testdb_get_node_distribution",
+        "testdb_get_channel_device_statistics"
+      ]
+    },
+    {
+      "id": "admin_users",
+      "title_tr": "Kullanıcı / yetki",
+      "tools": [
+        "testdb_get_user_permissions",
+        "testdb_get_node_permissions",
+        "testdb_list_user_groups",
+        "testdb_get_group_members",
+        "testdb_list_users",
+        "testdb_get_user",
+        "testdb_search_users",
+        "testdb_get_user_stats"
+      ]
+    },
+    {
+      "id": "tags_meta",
+      "title_tr": "Tag link / clone",
+      "tools": [
+        "testdb_list_tag_links",
+        "testdb_list_tag_clones"
+      ]
+    },
+    {
+      "id": "logs",
+      "title_tr": "Log parametreleri",
+      "tools": [
+        "testdb_list_log_params"
+      ]
+    },
+    {
+      "id": "kepware",
+      "title_tr": "Kepware / veri değişim",
+      "tools": [
+        "testdb_check_exchanger_status"
+      ]
+    },
+    {
+      "id": "dma",
+      "title_tr": "DMA / mevsimsel analiz",
+      "tools": [
+        "testdb_list_dma_station_nodes",
+        "testdb_analyze_dma_seasonal_demand",
+        "testdb_analyze_seasonal_level_profile"
+      ]
+    },
+    {
+      "id": "export_reports",
+      "title_tr": "Export / raporlar (Excel PDF CSV)",
+      "tools": [
+        "testdb_export_log_data",
+        "testdb_generate_scada_report",
+        "testdb_generate_node_report",
+        "testdb_export_custom_data",
+        "testdb_export_active_alarms"
+      ]
+    },
+    {
+      "id": "analytics",
+      "title_tr": "Trend / karşılaştırma analizi",
+      "tools": [
+        "testdb_compare_log_metrics",
+        "testdb_analyze_log_trend"
+      ]
+    },
+    {
+      "id": "ai_registry",
+      "title_tr": "AI modül / yetenek registry",
+      "tools": [
+        "testdb_get_korubin_ai_mcp_registry"
+      ]
+    }
+  ]
+}

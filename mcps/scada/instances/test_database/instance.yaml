@@ -1,0 +1,25 @@
+mcp_name: "Test Database"
+mcp_version: "1.0.0"
+mcp_description: "Genel veritabani analiz araci. Kullanici connect_database ile kendi DB bilgilerini verebilir veya varsayilan DB kullanilir."
+mcp_instructions: |
+  Kullanici veritabani bilgileri verirse connect_database tool'unu cagir.
+  Ornek: connect_database(host="10.10.10.72", dbname="kbindb", username="root", password="xxx", port=3307)
+  Sonra list_tables, describe_schema gibi tool'lari kullan.
+tool_prefix: "testdb_"
+panel_base_url: ""
+
+toolpacks:
+  - "database"
+
+db:
+  host: ""
+  port: 3306
+  dbname: ""
+  username: ""
+  password: ""
+  charset: "utf8mb4"
+  connect_timeout_sec: 10
+  query_timeout_ms: 30000
+
+auth:
+  enabled: true

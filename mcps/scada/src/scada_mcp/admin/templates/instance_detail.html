@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% set active_page = "instances" %}
+
+{% block title %}{{ instance.name }} - Envest MCP Admin{% endblock %}
+{% block topbar_title %}Instance Detail{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+  <div class="flex items-center gap-4">
+    <a href="/instances" class="p-2 rounded-xl text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-all">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg>
+    </a>
+    <div>
+      <h1 class="text-2xl font-bold text-slate-100">{{ instance.name }}</h1>
+      <p class="text-sm text-slate-500 mt-0.5">Instance detaylari</p>
+    </div>
+  </div>
+  {% if user.role == 'admin' %}
+  <div class="flex items-center gap-3">
+    <a href="/instances/{{ instance.name }}/edit"
+       class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-blue-400 bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+      </svg>
+      Duzenle
+    </a>
+    <form method="POST" action="/instances/{{ instance.name }}/delete" style="display:inline"
+          onsubmit="return confirmDelete('{{ instance.name }}')">
+      <button type="submit"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-rose-400 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 transition-all">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+        Sil
+      </button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Left Column: Config + DB -->
+  <div class="lg:col-span-2 space-y-6">
+    <!-- Config Card -->
+    <div class="glass-card rounded-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-white/5">
+        <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+          <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Konfigürasyon
+        </h2>
+      </div>
+      <div class="p-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+          <div>
+            <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Instance Name</dt>
+            <dd class="text-sm text-slate-200 font-medium">{{ instance.name }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Type</dt>
+            <dd class="flex flex-wrap gap-1.5 mt-0.5">
+              {% if instance.type == 'scada' %}
+              <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">SCADA</span>
+              {% elif instance.type == 'korucaps' %}
+              <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">KoruCAPS</span>
+              {% elif instance.type == 'both' %}
+              <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">SCADA</span>
+              <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">KoruCAPS</span>
+              {% else %}
+              <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20">{{ instance.type or 'Custom' }}</span>
+              {% endif %}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">MCP Name</dt>
+            <dd><code class="text-xs text-slate-300 bg-white/5 px-2 py-1 rounded-md font-mono">{{ instance.mcp_name or '-' }}</code></dd>
+          </div>
+          <div>
+            <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Tool Prefix</dt>
+            <dd><code class="text-xs text-slate-300 bg-white/5 px-2 py-1 rounded-md font-mono">{{ instance.tool_prefix or '-' }}</code></dd>
+          </div>
+          <div class="sm:col-span-2">
+            <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Description</dt>
+            <dd class="text-sm text-slate-400">{{ instance.description or '-' }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Panel URL</dt>
+            <dd>
+              {% if instance.panel_url %}
+              <a href="{{ instance.panel_url }}" target="_blank" rel="noopener" class="text-sm text-blue-400 hover:text-blue-300 transition-colors inline-flex items-center gap-1">
+                {{ instance.panel_url }}
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+              </a>
+              {% else %}<span class="text-sm text-slate-600">-</span>{% endif %}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Database</dt>
+            <dd>
+              {% if instance.db_host %}
+              <code class="text-xs text-slate-300 bg-white/5 px-2 py-1 rounded-md font-mono">{{ instance.db_host }}:{{ instance.db_port or '5432' }}/{{ instance.db_name or '-' }}</code>
+              {% else %}<span class="text-sm text-slate-600">-</span>{% endif %}
+            </dd>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tokens Card -->
+    <div class="glass-card rounded-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-white/5">
+        <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+          <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+          </svg>
+          Erisim Tokenleri
+          <span class="ml-auto text-xs font-normal text-slate-600">{{ tokens|length }} token</span>
+        </h2>
+      </div>
+      {% if tokens %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-white/5">
+              <th class="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Token Name</th>
+              <th class="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Created By</th>
+              <th class="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+              <th class="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Expires</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">
+            {% for tok in tokens %}
+            <tr class="table-row-glow">
+              <td class="px-6 py-3 font-medium text-slate-200">{{ tok.name }}</td>
+              <td class="px-6 py-3 text-slate-400">{{ tok.created_by or '-' }}</td>
+              <td class="px-6 py-3">
+                {% if tok.status == 'active' %}
+                <span class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+                  <span class="status-dot status-dot-active"></span>Active
+                </span>
+                {% elif tok.status == 'revoked' %}
+                <span class="inline-flex items-center gap-1.5 text-xs font-medium text-rose-400">
+                  <span class="status-dot status-dot-revoked"></span>Revoked
+                </span>
+                {% else %}
+                <span class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                  <span class="status-dot status-dot-expired"></span>Expired
+                </span>
+                {% endif %}
+              </td>
+              <td class="px-6 py-3 text-slate-500 text-xs">{{ tok.expires_at or 'Suresiz' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="p-8 text-center">
+        <p class="text-sm text-slate-600">Bu instance icin tanimli token yok.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Right Column: Tools + Skills -->
+  <div class="space-y-6">
+    <!-- Toolpacks Badge -->
+    <div class="glass-card rounded-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-white/5">
+        <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+          <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+          </svg>
+          Toolpacks
+        </h2>
+      </div>
+      <div class="p-4">
+        <div class="flex flex-wrap gap-2">
+          {% for tp_name in instance.toolpacks or ['scada'] %}
+          <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold
+            {% if tp_name == 'scada' %}text-emerald-400 bg-emerald-500/10 border border-emerald-500/15
+            {% elif tp_name == 'korucaps' %}text-blue-400 bg-blue-500/10 border border-blue-500/15
+            {% elif tp_name == 'database' %}text-amber-400 bg-amber-500/10 border border-amber-500/15
+            {% elif tp_name == 'skills' %}text-purple-400 bg-purple-500/10 border border-purple-500/15
+            {% else %}text-slate-400 bg-slate-500/10 border border-slate-500/15{% endif %}">
+            {{ tp_name }}
+          </span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Tools Card -->
+    <div class="glass-card rounded-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-white/5">
+        <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+          <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Tools
+          <span class="ml-auto text-xs font-normal text-slate-600">{{ tools|length }}</span>
+        </h2>
+      </div>
+      {% if tools %}
+      <div class="p-4">
+        <div class="flex flex-wrap gap-2">
+          {% for tool in tools %}
+          <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-mono font-medium text-blue-300 bg-blue-500/10 border border-blue-500/15">
+            {{ tool }}
+          </span>
+          {% endfor %}
+        </div>
+      </div>
+      {% else %}
+      <div class="p-8 text-center">
+        <p class="text-sm text-slate-600">Bu instance icin tanimli tool yok.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Skills Card -->
+    <div class="glass-card rounded-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-white/5">
+        <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+          <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+          </svg>
+          Skills
+          <span class="ml-auto text-xs font-normal text-slate-600">{{ skills|length if skills else 0 }}</span>
+        </h2>
+      </div>
+      {% if skills %}
+      <div class="p-4 space-y-3">
+        {% for skill in skills %}
+        <div class="rounded-xl bg-white/5 border border-white/5 p-4">
+          <div class="flex items-start justify-between mb-2">
+            <div>
+              <h3 class="text-sm font-semibold text-purple-300">{{ skill.name }}</h3>
+              <span class="text-[10px] text-slate-600 font-mono">v{{ skill.version }}</span>
+            </div>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-purple-500/10 text-purple-400 border border-purple-500/15">
+              {{ skill.files|length }} dosya
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 leading-relaxed mb-3">{{ skill.description[:150] }}{% if skill.description|length > 150 %}...{% endif %}</p>
+          <div class="flex flex-wrap gap-1.5">
+            {% for file in skill.files %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono text-slate-500 bg-slate-800/50 border border-white/5">
+              {{ file }}
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="p-8 text-center">
+        <div class="w-12 h-12 rounded-xl bg-slate-800/50 flex items-center justify-center mx-auto mb-3">
+          <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+          </svg>
+        </div>
+        <p class="text-sm text-slate-600 mb-1">Skill tanimlanmamis</p>
+        <p class="text-xs text-slate-700">
+          {% if 'skills' not in (instance.toolpacks or []) %}
+          <code>toolpacks</code>'a <code>"skills"</code> ekleyerek etkinlestirin.
+          {% else %}
+          <code>instances/{{ instance.name }}/skills/</code> veya <code>skills/</code> altina SKILL.md ekleyin.
+          {% endif %}
+        </p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

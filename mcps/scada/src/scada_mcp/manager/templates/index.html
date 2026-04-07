@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% block content %}
+  <div class="row">
+    <div class="card">
+      <h3>Instances</h3>
+      <div class="muted">Kopyala‑yapıştır instance modeli: <code>instances/&lt;name&gt;/</code></div>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>MCP</th>
+            <th>Prefix</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for it in items %}
+          <tr>
+            <td><code>{{ it.name }}</code></td>
+            <td>{{ it.kind }}</td>
+            <td>
+              <div><strong>{{ it.mcp_name }}</strong></div>
+              <div class="muted">{{ it.mcp_description }}</div>
+            </td>
+            <td><code>{{ it.tool_prefix }}</code></td>
+            <td><a class="btn" href="/instances/{{ it.name }}">Open</a></td>
+          </tr>
+          {% endfor %}
+          {% if items|length == 0 %}
+          <tr><td colspan="5" class="muted">No instances found.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}
+

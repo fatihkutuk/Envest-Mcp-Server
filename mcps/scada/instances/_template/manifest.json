@@ -1,0 +1,23 @@
+{
+  "_schema": "scada_mcp_manifest",
+  "version": 1,
+  "title": "SCADA MCP manifest (template)",
+  "purpose": "This file describes what this MCP is, which site it represents, and the tool groups available.",
+  "tool_groups": [
+    {
+      "id": "routing",
+      "title": "Routing / disambiguation",
+      "tools": [
+        "get_korubin_ui_and_tool_routing_tr",
+        "get_scada_site_routing_hints",
+        "get_scada_mcp_manifest",
+        "get_scada_tag_naming_defaults_tr"
+      ]
+    },
+    {
+      "id": "nodes",
+      "title": "Node / point counts",
+      "tools": ["get_node_counts"]
+    }
+  ]
+}

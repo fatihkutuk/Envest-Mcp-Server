@@ -1,0 +1,23 @@
+mcp_name: "kaskidb_"
+mcp_version: "1.0.0"
+mcp_description: "Kaski lokal db si."
+mcp_instructions: |
+  
+tool_prefix: "kaskidb_"
+panel_base_url: ""
+
+toolpacks:
+  - "database"
+
+db:
+  host: "10.10.10.72"
+  port: 3307
+  dbname: "kbindb"
+  username: "${DB_USERNAME}"
+  password: "${DB_PASSWORD}"
+  charset: "utf8mb4"
+  connect_timeout_sec: 5
+  query_timeout_ms: 8000
+
+auth:
+  enabled: true

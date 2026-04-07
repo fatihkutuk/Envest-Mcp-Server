@@ -1,0 +1,236 @@
+{
+  "_schema": "scada_mcp_manifest",
+  "version": 1,
+  "title": "SCADA MCP manifest (CorumScada)",
+  "purpose": "corum-scada",
+  "tool_groups": [
+    {
+      "id": "routing",
+      "title_tr": "Yönlendirme / belirsizlik çözümü",
+      "tools": [
+        "corumscada_get_korubin_ui_and_tool_routing_tr",
+        "corumscada_get_scada_site_routing_hints",
+        "corumscada_get_scada_mcp_manifest",
+        "corumscada_get_scada_tag_naming_defaults_tr",
+        "corumscada_smart_tool_select"
+      ]
+    },
+    {
+      "id": "nodes",
+      "title_tr": "Node / nokta sayımı",
+      "tools": []
+    },
+    {
+      "id": "nodes",
+      "title_tr": "Node / topo",
+      "tools": [
+        "corumscada_get_node_counts",
+        "corumscada_list_nodes",
+        "corumscada_find_nodes_by_keywords",
+        "corumscada_get_node",
+        "corumscada_list_product_types",
+        "corumscada_get_node_scada_context",
+        "corumscada_get_node_panel_settings_guide",
+        "corumscada_get_operational_engineering_hints"
+      ]
+    },
+    {
+      "id": "scada_live",
+      "title_tr": "SCADA canlı veri (_tagoku)",
+      "tools": [
+        "corumscada_get_scada_system_stats",
+        "corumscada_get_device_data",
+        "corumscada_get_device_tag_values",
+        "corumscada_list_live_tag_across_nodes",
+        "corumscada_search_tags"
+      ]
+    },
+    {
+      "id": "concepts",
+      "title_tr": "Kavram rehberi",
+      "tools": [
+        "corumscada_get_korubin_data_concepts"
+      ]
+    },
+    {
+      "id": "semantics",
+      "title_tr": "Panel semantik",
+      "tools": [
+        "corumscada_get_nview_equipment_profile",
+        "corumscada_get_scada_semantics",
+        "corumscada_get_view_tag_meanings",
+        "corumscada_get_counter_semantics",
+        "corumscada_resolve_semantic_tag_candidates"
+      ]
+    },
+    {
+      "id": "alarms",
+      "title_tr": "Alarmlar",
+      "tools": [
+        "corumscada_list_alarms",
+        "corumscada_get_active_alarms",
+        "corumscada_get_alarm_subscribers"
+      ]
+    },
+    {
+      "id": "schema",
+      "title_tr": "DB şema / güvenli sorgu",
+      "tools": [
+        "corumscada_get_database_schema",
+        "corumscada_get_table_info",
+        "corumscada_run_safe_query"
+      ]
+    },
+    {
+      "id": "semantics",
+      "title_tr": "Panel semantik / şablon",
+      "tools": [
+        "corumscada_list_point_display_templates",
+        "corumscada_read_point_display_template",
+        "corumscada_list_point_display_files",
+        "corumscada_search_point_display_templates",
+        "corumscada_get_panel_url_for_template",
+        "corumscada_extract_menu_links",
+        "corumscada_summarize_point_display_template"
+      ]
+    },
+    {
+      "id": "alarms_stats",
+      "title_tr": "Alarm istatistikleri",
+      "tools": [
+        "corumscada_get_alarm_statistics"
+      ]
+    },
+    {
+      "id": "kepware_more",
+      "title_tr": "Kepware cihaz / sürücü",
+      "tools": [
+        "corumscada_list_channel_devices",
+        "corumscada_get_channel_device_detail",
+        "corumscada_get_device_connection_params",
+        "corumscada_list_channel_types",
+        "corumscada_list_device_types",
+        "corumscada_get_device_type_tags",
+        "corumscada_get_device_individual_tags",
+        "corumscada_list_device_status_codes",
+        "corumscada_list_drivers",
+        "corumscada_get_driver_detail",
+        "corumscada_list_service_instances",
+        "corumscada_get_service_activities",
+        "corumscada_get_device_all_tags",
+        "corumscada_get_node_all_tags",
+        "corumscada_get_tag_address"
+      ]
+    },
+    {
+      "id": "charts",
+      "title_tr": "Grafik (log)",
+      "tools": [
+        "corumscada_get_chart_data",
+        "corumscada_get_multi_chart_data",
+        "corumscada_get_node_log_chart_data",
+        "corumscada_get_recent_log_chart_by_tag"
+      ]
+    },
+    {
+      "id": "node_logs",
+      "title_tr": "Node log tabloları",
+      "tools": [
+        "corumscada_get_node_log_data",
+        "corumscada_get_node_log_summary",
+        "corumscada_get_node_log_latest_values"
+      ]
+    },
+    {
+      "id": "products",
+      "title_tr": "Ürün kılavuzu (JSON)",
+      "tools": [
+        "corumscada_search_product_manual",
+        "corumscada_get_product_specs",
+        "corumscada_get_product_settings",
+        "corumscada_get_product_troubleshoot",
+        "corumscada_get_product_sensor_info"
+      ]
+    },
+    {
+      "id": "dashboard",
+      "title_tr": "Dashboard / özet",
+      "tools": [
+        "corumscada_get_scada_summary",
+        "corumscada_get_node_distribution",
+        "corumscada_get_channel_device_statistics"
+      ]
+    },
+    {
+      "id": "admin_users",
+      "title_tr": "Kullanıcı / yetki",
+      "tools": [
+        "corumscada_get_user_permissions",
+        "corumscada_get_node_permissions",
+        "corumscada_list_user_groups",
+        "corumscada_get_group_members",
+        "corumscada_list_users",
+        "corumscada_get_user",
+        "corumscada_search_users",
+        "corumscada_get_user_stats"
+      ]
+    },
+    {
+      "id": "tags_meta",
+      "title_tr": "Tag link / clone",
+      "tools": [
+        "corumscada_list_tag_links",
+        "corumscada_list_tag_clones"
+      ]
+    },
+    {
+      "id": "logs",
+      "title_tr": "Log parametreleri",
+      "tools": [
+        "corumscada_list_log_params"
+      ]
+    },
+    {
+      "id": "kepware",
+      "title_tr": "Kepware / veri değişim",
+      "tools": [
+        "corumscada_check_exchanger_status"
+      ]
+    },
+    {
+      "id": "dma",
+      "title_tr": "DMA / mevsimsel analiz",
+      "tools": [
+        "corumscada_list_dma_station_nodes",
+        "corumscada_analyze_dma_seasonal_demand",
+        "corumscada_analyze_seasonal_level_profile"
+      ]
+    },
+    {
+      "id": "export_reports",
+      "title_tr": "Export / raporlar (Excel PDF CSV)",
+      "tools": [
+        "corumscada_export_log_data",
+        "corumscada_generate_scada_report",
+        "corumscada_generate_node_report",
+        "corumscada_export_custom_data",
+        "corumscada_export_active_alarms"
+      ]
+    },
+    {
+      "id": "analytics",
+      "title_tr": "Trend / karşılaştırma analizi",
+      "tools": [
+        "corumscada_compare_log_metrics",
+        "corumscada_analyze_log_trend"
+      ]
+    },
+    {
+      "id": "ai_registry",
+      "title_tr": "AI modül / yetenek registry",
+      "tools": [
+        "corumscada_get_korubin_ai_mcp_registry"
+      ]
+    }
+  ]
+}

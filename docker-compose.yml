@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  # ============================================
+  # Envest MCP Server (Python - Multi-Instance)
+  # Tek port (8001), tek sunucu.
+  # Instance ayirimi JWT token ile.
+  # Sunucudaki mevcut Nginx, mcp.envest.com.tr
+  # icin proxy_pass http://127.0.0.1:8001 yapar.
+  # ============================================
+  mcp-server:
+    build:
+      context: ./mcps/scada
+      dockerfile: Dockerfile
+    container_name: envest-mcp-server
+    environment:
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8001
+    volumes:
+      - ./mcps/scada/instances:/app/instances
+    ports:
+      - "127.0.0.1:8001:8001"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

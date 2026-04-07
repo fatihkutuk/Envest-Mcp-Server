@@ -1,0 +1,22 @@
+mcp_name: "EnvestBulutKorubin"
+mcp_version: "1.0.0"
+mcp_description: "Korubin bulut / merkez (korubin.com). Envestin yerel korubin scadası. Korubn derken isim verilmiyorsa bu. EnvestBulutKorubin"
+mcp_instructions: |
+  Korubin bulut/merkez instance.
+  Belirsizlikte: get_scada_site_routing_hints.
+  Export linki: download_url / file_url (filepath değil).
+tool_prefix: "envestbulutkorubin_"
+panel_base_url: "korubin.com"
+
+db:
+  host: "85.111.94.232"
+  port: 3306
+  dbname: "kbindb"
+  username: "${DB_USERNAME}"
+  password: "${DB_PASSWORD}"
+  charset: "utf8mb4"
+  connect_timeout_sec: 5
+  query_timeout_ms: 8000
+
+auth:
+  enabled: true

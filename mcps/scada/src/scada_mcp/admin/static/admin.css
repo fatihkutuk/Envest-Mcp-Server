@@ -1,0 +1,529 @@
+/* ========================================
+   Envest MCP Admin Panel - Modern Dark Theme
+   Glassmorphism + Tailwind Companion CSS
+   ======================================== */
+
+/* --- Glassmorphism Utilities --- */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-dark {
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* --- Custom Scrollbar --- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+/* --- Gradient Text --- */
+.gradient-text {
+  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-brand {
+  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #10b981 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* --- Sidebar Animations --- */
+.sidebar-nav-item {
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #10b981;
+  border-radius: 0 2px 2px 0;
+  transform: scaleY(0);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-nav-item.active::before,
+.sidebar-nav-item:hover::before {
+  transform: scaleY(1);
+}
+
+.sidebar-nav-item.active {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+/* --- Pulse / Glow Animations --- */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.2);
+  }
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.status-dot-active {
+  background: #10b981;
+  animation: pulse-dot 2s ease-in-out infinite;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+}
+
+.status-dot-revoked {
+  background: #f43f5e;
+  box-shadow: 0 0 6px rgba(244, 63, 94, 0.3);
+}
+
+.status-dot-expired {
+  background: #6b7280;
+}
+
+/* --- Token Reveal Animation --- */
+@keyframes token-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.token-reveal {
+  animation: token-reveal 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* --- Table Row Hover Glow --- */
+.table-row-glow {
+  transition: all 0.2s ease;
+}
+
+.table-row-glow:hover {
+  background: rgba(255, 255, 255, 0.03) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* --- Modal Backdrop Blur Transition --- */
+.modal-backdrop-blur {
+  opacity: 0;
+  visibility: hidden;
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modal-backdrop-blur.active {
+  opacity: 1;
+  visibility: visible;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.modal-content-animate {
+  opacity: 0;
+  transform: scale(0.95) translateY(10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modal-backdrop-blur.active .modal-content-animate {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+/* --- Flash Message Slide Animation --- */
+@keyframes flash-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes flash-slide-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 80px;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-12px);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
+}
+
+.flash-animate-in {
+  animation: flash-slide-in 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.flash-animate-out {
+  animation: flash-slide-out 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* --- Confirmation Dialog --- */
+.confirm-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.25s ease;
+}
+
+.confirm-dialog-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.confirm-dialog {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  transform: scale(0.95);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+}
+
+.confirm-dialog-overlay.active .confirm-dialog {
+  transform: scale(1);
+}
+
+/* --- Toast Notification --- */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(16px) scale(0.95);
+  }
+}
+
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #e2e8f0;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  animation: toast-in 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.toast.removing {
+  animation: toast-out 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.toast-success {
+  border-left: 3px solid #10b981;
+}
+
+.toast-error {
+  border-left: 3px solid #f43f5e;
+}
+
+.toast-info {
+  border-left: 3px solid #3b82f6;
+}
+
+/* --- Stat Card Hover --- */
+.stat-card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* --- Gradient Buttons --- */
+.btn-gradient-primary {
+  background: linear-gradient(135deg, #10b981, #059669);
+  transition: all 0.2s ease;
+}
+
+.btn-gradient-primary:hover {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-gradient-danger {
+  background: linear-gradient(135deg, #f43f5e, #e11d48);
+  transition: all 0.2s ease;
+}
+
+.btn-gradient-danger:hover {
+  box-shadow: 0 4px 20px rgba(244, 63, 94, 0.3);
+  transform: translateY(-1px);
+}
+
+/* --- Login Animated Background --- */
+@keyframes grid-move {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(40px, 40px); }
+}
+
+.login-grid-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
+  background-size: 40px 40px;
+  animation: grid-move 20s linear infinite;
+}
+
+.login-glow-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  z-index: 0;
+}
+
+/* --- Checkbox Toggle Buttons --- */
+.toggle-checkbox {
+  position: relative;
+  cursor: pointer;
+}
+
+.toggle-checkbox input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-checkbox .toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.toggle-checkbox input[type="checkbox"]:checked + .toggle-label {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
+}
+
+.toggle-checkbox .toggle-label:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* --- Radio Pill Selector --- */
+.pill-radio {
+  position: relative;
+  cursor: pointer;
+}
+
+.pill-radio input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.pill-radio .pill-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 20px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.pill-radio input[type="radio"]:checked + .pill-label {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
+}
+
+.pill-radio .pill-label:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* --- Sidebar Mobile Animation --- */
+@media (max-width: 1024px) {
+  .sidebar-mobile {
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sidebar-mobile.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .sidebar-overlay.open {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+/* --- Misc --- */
+.row-link {
+  cursor: pointer;
+}
+
+code {
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+}
+
+/* Form input custom focus ring */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2), 0 0 0 1px rgba(16, 185, 129, 0.4);
+  border-color: #10b981 !important;
+}
+
+/* Smooth page transitions */
+.page-enter {
+  animation: page-fade-in 0.3s ease forwards;
+}
+
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

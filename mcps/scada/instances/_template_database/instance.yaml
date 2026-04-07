@@ -1,0 +1,19 @@
+mcp_name: "Customer Database"
+mcp_description: "MySQL database exploration and analysis"
+tool_prefix: "mydb_"
+
+toolpacks:
+  - database
+
+db:
+  host: "${DB_HOST}"
+  port: 3306
+  dbname: "${DB_NAME}"
+  username: "${DB_USERNAME}"
+  password: "${DB_PASSWORD}"
+  charset: "utf8mb4"
+  connect_timeout_sec: 10
+  query_timeout_ms: 30000
+
+auth:
+  enabled: true

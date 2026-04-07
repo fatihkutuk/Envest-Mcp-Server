@@ -1,0 +1,28 @@
+mcp_name: "template-scada"
+mcp_version: "1.0.0"
+mcp_description: "Template SCADA MCP instance."
+mcp_instructions: |
+  This is a template instance. Copy this folder under instances/<name> and edit instance.yaml + manifest.json + .env.
+tool_prefix: "template_"
+panel_base_url: ""
+
+# Export (Excel/PDF) download link: browser / Web UI GET to download files.
+# Example: "http://127.0.0.1:8000" or reverse proxy address. If empty, MCP_PUBLIC_BASE_URL env is used.
+# mcp_public_base_url: "http://127.0.0.1:8000"
+
+# Optional stability knobs (0 = disabled)
+mcp_max_concurrency: 0
+mcp_concurrency_wait_ms: 0
+
+db:
+  host: "127.0.0.1"
+  port: 3306
+  dbname: "kbindb"
+  username: "${DB_USERNAME}"
+  password: "${DB_PASSWORD}"
+  charset: "utf8mb4"
+  connect_timeout_sec: 5
+  query_timeout_ms: 8000
+
+auth:
+  enabled: true

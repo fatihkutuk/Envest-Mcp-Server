@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(netstat -ano)",
+      "Bash(while read:*)",
+      "Bash(do taskkill:*)",
+      "Bash(done)",
+      "Bash(grep -A2 \"mcp_description\" D:/LiveProject/Envest-Mcp-Server/mcps/scada/instances/*/instance.yaml)",
+      "Bash(python -c \":*)",
+      "Bash(where python:*)",
+      "Bash(python3 -c \":*)",
+      "Read(//c/Users/user/AppData/Local/Programs/Python/**)",
+      "Bash(ls /c/Python*/python.exe)",
+      "Bash(echo $PATH)",
+      "Bash(/c/Users/user/AppData/Local/Programs/Python/Python311/python.exe -c \":*)",
+      "Bash(\"C:/Users/user/AppData/Local/Programs/Python/Python311/python.exe\" -c \":*)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''mcps/scada/src/scada_mcp/admin/app.py'', encoding=''utf-8''\\).read\\(\\)\\); print\\(''Syntax OK''\\)\")",
+      "Bash(where python3:*)",
+      "Bash(where py:*)",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\(''D:/LiveProject/Envest-Mcp-Server/mcps/scada/src/scada_mcp/admin/app.py'', encoding=''utf-8''\\).read\\(\\)\\); print\\(''Syntax OK''\\)\")",
+      "Bash(DB_TOKEN=\"v1.eyJzdWIiOiJ0ZXN0X2RhdGFiYXNlIiwiaWF0IjoxNzc1NTU5NDQ0LCJleHAiOjIwOTA5MTk0NDQsImF1ZCI6InNjYWRhLW1jcCJ9.sP-5TTX0-jz81VB5bk4e4rMeBqlgIz2xvrUd0PxLqKY\")",
+      "Bash(timeout 5 curl -s -N http://127.0.0.1:8001/mcp/sse -H \"Authorization: Bearer $DB_TOKEN\")",
+      "Bash(curl -L -o \"D:/LiveProject/Envest-Mcp-Server/mcps/scada/src/scada_mcp/admin/static/tailwind.js\" \"https://cdn.tailwindcss.com\")",
+      "WebFetch(domain:mcp.envest.com.tr)",
+      "Bash(find D:/projects/KoruMind-McpServer/py-scada-mcp -name *.json -path */data/*)",
+      "Bash(find D:/projects/KoruMind-McpServer -name *.json -not -path */node_modules/* -not -path */__pycache__/* -not -path */.git/*)"
+    ]
+  }
+}

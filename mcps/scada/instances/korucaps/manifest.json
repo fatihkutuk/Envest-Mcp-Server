@@ -1,0 +1,20 @@
+{
+  "_schema": "scada_mcp_manifest",
+  "version": 1,
+  "title_tr": "KoruCAPS Pompa Secim Sistemi",
+  "purpose_tr": "Grundfos WinCAPS veritabani uzerinden pompa secimi, performans hesaplama ve egri analizi.",
+  "tool_groups": [
+    {
+      "id": "korucaps_pump_selection",
+      "title_tr": "KoruCAPS Pompa Secim",
+      "tools": [
+        "korucaps_search_pumps",
+        "korucaps_calculate_operating_point",
+        "korucaps_get_pump_details",
+        "korucaps_get_pump_curve_data",
+        "korucaps_list_applications",
+        "korucaps_list_pump_families"
+      ]
+    }
+  ]
+}

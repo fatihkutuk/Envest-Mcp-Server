@@ -1,0 +1,21 @@
+mcp_name: "KoruCAPS"
+mcp_version: "1.0.0"
+mcp_description: "KoruCAPS Pompa Secim Sistemi - Grundfos WinCAPS veritabani uzerinden pompa secimi, performans hesaplama ve egri analizi."
+tool_prefix: "korucaps_"
+panel_base_url: ""
+
+toolpacks:
+  - korucaps
+
+db:
+  host: "${WINCAPS_DB_HOST}"
+  port: 3306
+  dbname: "${WINCAPS_DB_NAME}"
+  username: "${WINCAPS_DB_USER}"
+  password: "${WINCAPS_DB_PASSWORD}"
+  charset: "utf8mb4"
+  connect_timeout_sec: 10
+  query_timeout_ms: 30000
+
+auth:
+  enabled: true

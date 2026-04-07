@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% set active_page = "instances" %}
+
+{% block title %}Yeni Instance - Envest MCP Admin{% endblock %}
+{% block topbar_title %}Create Instance{% endblock %}
+
+{% block content %}
+<div class="flex items-center gap-4 mb-8">
+  <a href="/instances" class="p-2 rounded-xl text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-all">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+    </svg>
+  </a>
+  <div>
+    <h1 class="text-2xl font-bold text-slate-100">Yeni Instance</h1>
+    <p class="text-sm text-slate-500 mt-0.5">Yeni bir MCP instance olusturun</p>
+  </div>
+</div>
+
+{% if error %}
+<div class="mb-6 px-4 py-3 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 text-sm font-medium flex items-center gap-2">
+  <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+  </svg>
+  {{ error }}
+</div>
+{% endif %}
+
+<form method="POST" action="/instances/new" class="space-y-6 max-w-4xl">
+  <!-- General Settings -->
+  <div class="glass-card rounded-2xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-white/5">
+      <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Genel Ayarlar
+      </h2>
+    </div>
+    <div class="p-6 space-y-5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div>
+          <label for="instance_name" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Instance Name</label>
+          <input type="text" id="instance_name" name="instance_name"
+                 class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-100 text-sm placeholder-slate-600 transition-all hover:border-white/20"
+                 placeholder="ornek: spikel-izmir" required>
+          <p class="text-xs text-slate-600 mt-1.5">Benzersiz tanimlayici, kucuk harf ve tire kullanin</p>
+        </div>
+        <div>
+          <label for="toolpacks" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Tool Packs</label>
+          <select id="toolpacks" name="toolpacks"
+                  class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-100 text-sm transition-all hover:border-white/20 appearance-none" required>
+            <option value="" class="bg-slate-900">Seciniz...</option>
+            <option value="scada" class="bg-slate-900">SCADA (Node/Tag/Log/Alarm)</option>
+            <option value="korucaps" class="bg-slate-900">KoruCAPS (Pompa Secim)</option>
+            <option value="database" class="bg-slate-900">Database (Genel DB Analizi)</option>
+            <option value="database,skills" class="bg-slate-900">Database + Skills</option>
+            <option value="scada,skills" class="bg-slate-900">SCADA + Skills</option>
+            <option value="scada,korucaps" class="bg-slate-900">SCADA + KoruCAPS</option>
+            <option value="scada,korucaps,skills" class="bg-slate-900">SCADA + KoruCAPS + Skills</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div>
+          <label for="tool_prefix" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Tool Prefix</label>
+          <input type="text" id="tool_prefix" name="tool_prefix"
+                 class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-100 text-sm placeholder-slate-600 transition-all hover:border-white/20"
+                 placeholder="ornek: izmir">
+          <p class="text-xs text-slate-600 mt-1.5">Tool isimlerinin oneki (opsiyonel)</p>
+        </div>
+        <div>
+          <label for="mcp_name" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">MCP Name</label>
+          <input type="text" id="mcp_name" name="mcp_name"
+                 class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-100 text-sm placeholder-slate-600 transition-all hover:border-white/20"
+                 placeholder="ornek: spikel-izmir-scada">
+        </div>
+      </div>
+      <div>
+        <label for="mcp_description" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">MCP Description</label>
+        <textarea id="mcp_description" name="mcp_description" rows="2"
+                  class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-100 text-sm placeholder-slate-600 transition-all hover:border-white/20 resize-y min-h-[80px]"
+                  placeholder="Bu MCP sunucusunun aciklamasi..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Database Settings -->
+  <div class="glass-card rounded-2xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-white/5">
+      <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
+        </svg>
+        Veritabani Ayarlari
+      </h2>
+    </div>
+    <div class="p-6 space-y-5">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <div>
+          <label for="db_host" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Host</label>
+          <input type="text" id="db_host" name="db_host"
+                 class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-100 text-sm placeholder-slate-600 transition-all hover:border-white/20"
+                 placeholder="localhost" required>
+        </div>
+        <div>
+          <label for="db_port" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Port</label>
+          <input type="number" id="db_port" name="db_port"
+                 class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-100 text-sm placeholder-slate-600 transition-all hover:border-white/20"
+                 placeholder="5432" value="5432">
+        </div>
+        <div>
+          <label for="db_name" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Database Name</label>
+          <input type="text" id="db_name" name="db_name"
+                 class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-100 text-sm placeholder-slate-600 transition-all hover:border-white/20"
+                 placeholder="scada_db" required>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div>
+          <label for="db_username" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Username</label>
+          <input type="text" id="db_username" name="db_username"
+                 class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-100 text-sm placeholder-slate-600 transition-all hover:border-white/20"
+                 placeholder="postgres">
+        </div>
+        <div>
+          <label for="db_password" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Password</label>
+          <input type="password" id="db_password" name="db_password"
+                 class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-100 text-sm placeholder-slate-600 transition-all hover:border-white/20"
+                 placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="flex items-center gap-3">
+    <button type="submit"
+            class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white btn-gradient-primary shadow-lg shadow-emerald-500/20">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Instance Olustur
+    </button>
+    <a href="/instances"
+       class="inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-medium text-slate-400 bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
+      Iptal
+    </a>
+  </div>
+</form>
+{% endblock %}

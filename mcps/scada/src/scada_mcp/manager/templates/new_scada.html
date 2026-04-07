@@ -1,0 +1,77 @@
+{% extends "layout.html" %}
+{% block content %}
+  <div class="card">
+    <h3>New SCADA instance</h3>
+    <div class="muted">SCADA tool pack + prefix’li tool isimleri otomatik gelir. Sadece standart alanları doldur.</div>
+    {% if error %}
+      <div class="error" style="margin-top:10px">{{ error }}</div>
+    {% endif %}
+    <form method="post" action="/instances/new">
+      <div class="grid2" style="margin-top:12px">
+        <div>
+          <label class="muted">Instance folder name</label>
+          <input name="name" placeholder="korubin_main" required />
+        </div>
+        <div>
+          <label class="muted">Tool prefix</label>
+          <input name="tool_prefix" placeholder="korubin_" required />
+        </div>
+      </div>
+
+      <div class="grid2" style="margin-top:12px">
+        <div>
+          <label class="muted">MCP name</label>
+          <input name="mcp_name" placeholder="korubin-main-scada" required />
+        </div>
+        <div>
+          <label class="muted">Panel base url</label>
+          <input name="panel_base_url" placeholder="korubin.com" />
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <label class="muted">MCP description</label>
+        <textarea name="mcp_description" required></textarea>
+      </div>
+
+      <div style="margin-top:12px">
+        <label class="muted">MCP instructions (optional)</label>
+        <textarea name="mcp_instructions"></textarea>
+      </div>
+
+      <h4 style="margin-top:14px">Database</h4>
+      <div class="grid3" style="margin-top:10px">
+        <div><input name="db_host" placeholder="85.111.94.232" required /></div>
+        <div><input name="db_port" placeholder="3306" required /></div>
+        <div><input name="db_name" placeholder="kbindb" required /></div>
+      </div>
+      <div class="grid2" style="margin-top:10px">
+        <div><input name="db_user" placeholder="root" required /></div>
+        <div><input name="db_pass" type="password" placeholder="password" /></div>
+      </div>
+
+      <div style="margin-top:12px">
+        <label class="muted">Korubin klasörü (KORUBIN_POINT_DISPLAY_ROOT)</label>
+        <input
+          name="point_display_root"
+          value="{{ default_point_display_root }}"
+          placeholder="{{ default_point_display_root }}"
+        />
+        <div class="muted" style="margin-top:6px">
+          Bu yol <code>app/views/point/display/common</code> klasörünü göstermelidir.
+        </div>
+      </div>
+
+      <h4 style="margin-top:14px">Auth (ephemeral token)</h4>
+      <div class="grid2" style="margin-top:10px">
+        <div><input name="admin_secret" type="password" placeholder="admin secret (x-admin-secret)" required /></div>
+        <div><input name="token_secret" type="password" placeholder="token signing secret" required /></div>
+      </div>
+
+      <div style="margin-top:14px">
+        <button class="btn primary" type="submit">Create instance</button>
+      </div>
+    </form>
+  </div>
+{% endblock %}
+

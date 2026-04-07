@@ -1,0 +1,23 @@
+mcp_name: "corum-scada"
+mcp_version: "1.0.0"
+mcp_description: "corum-scada"
+mcp_instructions: |
+  
+tool_prefix: "corumscada_"
+panel_base_url: ""
+
+toolpacks:
+  - "scada"
+
+db:
+  host: "85.111.94.231"
+  port: 3306
+  dbname: "kbindb"
+  username: "${DB_USERNAME}"
+  password: "${DB_PASSWORD}"
+  charset: "utf8mb4"
+  connect_timeout_sec: 5
+  query_timeout_ms: 8000
+
+auth:
+  enabled: true

@@ -1,0 +1,178 @@
+{% extends "layout.html" %}
+{% block content %}
+  <div class="stack">
+    <div class="card">
+      <div style="display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+        <h3>Instance: <code>{{ name }}</code></h3>
+        <div style="display:flex; gap:10px;">
+          <a class="btn" href="/instances/{{ name }}/edit">Edit config</a>
+        </div>
+      </div>
+      <div class="grid2">
+        <div>
+          <div class="muted">MCP Name</div>
+          <div><strong>{{ cfg.mcp_name }}</strong></div>
+        </div>
+        <div>
+          <div class="muted">Tool Prefix</div>
+          <div><code>{{ cfg.tool_prefix }}</code></div>
+        </div>
+      </div>
+      <div style="margin-top:10px" class="muted">{{ cfg.mcp_description }}</div>
+      <div style="margin-top:12px" class="kv">
+        <div class="muted">Panel base url</div>
+        <div><code>{{ cfg.panel_base_url or "" }}</code></div>
+        <div class="muted">DB</div>
+        <div>
+          {% if cfg.db %}
+            <code>{{ cfg.db.host }}:{{ cfg.db.port }}/{{ cfg.db.dbname }}</code>
+            <span class="muted">user:</span> <code>{{ cfg.db.username }}</code>
+          {% else %}
+            <span class="muted">No DB config</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card">
+        <h3>Generate mcpServers JSON</h3>
+        <div class="muted">
+          <strong>Remote MCP URL:</strong> LM Studio / KoruMind’un <em>çalıştığı bilgisayardan</em> erişilebilen adres olmalı.
+          Tarayıcıda <code>http://85.x.x.x:8000</code> ile açtıysanız varsayılan buna göre dolar; HTTPS + alan adı kullanıyorsanız burayı <code>https://mcp.siteniz.com/mcp/</code> yapın.
+          <code>127.0.0.1</code> yalnızca MCP ile istemcinin aynı makinede olduğu yerel kurulum içindir.
+        </div>
+        <div class="grid2" style="margin-top:10px">
+          <div>
+            <label>Local key</label>
+            <input id="kmLocalKey" value="{{ name }}" />
+          </div>
+          <div>
+            <label>Remote key</label>
+            <input id="kmRemoteKey" value="{{ name }}-remote" />
+          </div>
+        </div>
+        <div class="grid2" style="margin-top:10px">
+          <div>
+            <label>Remote MCP URL (streamable)</label>
+            <input id="kmRemoteUrl" value="{{ remote_mcp_url_default | default('http://127.0.0.1:8000/mcp/') }}" />
+          </div>
+          <div>
+            <label>Windows instance path</label>
+            <input id="kmInstancePath" value="{{ instance_path }}" />
+          </div>
+        </div>
+        <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <button class="btn primary" type="button" id="kmGenerateJsonBtn">Generate JSON (Local + Remote)</button>
+          <span class="muted">Remote JSON: <code>url</code> LM Studio için otomatik <code>/mcp/k/h…/</code> (path token); <code>headers</code> diğer istemciler için.</span>
+        </div>
+
+        <script>
+          (function(){
+            const defaultRemoteMcpUrl = {{ remote_mcp_url_default | default('http://127.0.0.1:8000/mcp/') | tojson }};
+            const btn = document.getElementById('kmGenerateJsonBtn');
+            const localKeyEl = document.getElementById('kmLocalKey');
+            const remoteKeyEl = document.getElementById('kmRemoteKey');
+            const remoteUrlEl = document.getElementById('kmRemoteUrl');
+            const instancePathEl = document.getElementById('kmInstancePath');
+
+            function qs(v){ return encodeURIComponent(v || ''); }
+            btn.addEventListener('click', async () => {
+              const localKey = localKeyEl.value.trim() || '{{ name }}';
+              const remoteKey = remoteKeyEl.value.trim() || '{{ name }}-remote';
+              const remoteUrl = remoteUrlEl.value.trim() || defaultRemoteMcpUrl;
+              const instancePath = instancePathEl.value.trim() || '{{ instance_path }}';
+              const subtitle = 'Instance: {{ name }}';
+
+              const localApi = `/instances/{{ name }}/mcpServers.local.json?local_key=${qs(localKey)}&instance_path=${qs(instancePath)}`;
+              const remoteApi = `/instances/{{ name }}/mcpServers.remote.json?remote_key=${qs(remoteKey)}&remote_url=${qs(remoteUrl)}`;
+
+              const filenames = {
+                local: `{{ name }}-local.mcpServers.json`,
+                remote: `{{ name }}-remote.mcpServers.json`,
+              };
+              if(window.kmOpenMcpServersModal){
+                await window.kmOpenMcpServersModal({ localUrl: localApi, remoteUrl: remoteApi, subtitle, filenames });
+              }
+            });
+          })();
+        </script>
+      </div>
+
+      <div class="card">
+        <h3>Remote token + LM Studio JSON (combined sunucu)</h3>
+        <div class="muted">
+          Aşağıdaki buton bu sayfayı hangi sunucu veriyorsa ona <code>POST /auth/mint</code> atar.
+          <strong>scada-mcp-combined</strong> tek süreçte açıksa bu sayfanın origin’i yeterli. Manager (varsayılan :8002) ve MCP (:8000) ayrı çalışıyorsa «Host:port» alanına MCP sunucusunu yazın (<code>127.0.0.1:8000</code>); yalnız manager’da <code>/auth/mint</code> olmadığı için boş bırakırsanız 404 olur.
+        </div>
+        <div class="grid2" style="margin-top:10px">
+          <div>
+            <label>MCP admin secret (<code>MCP_ADMIN_SECRET</code>)</label>
+            <input id="kmMintAdmin" type="password" autocomplete="off" placeholder="instance .env" />
+          </div>
+          <div>
+            <label>Host:port (combined)</label>
+            <input id="kmMintBase" value="" placeholder="boş = bu sayfanın origin’i" />
+          </div>
+        </div>
+        <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <button class="btn primary" type="button" id="kmMintRemoteBtn">Token + mcpServers JSON al</button>
+        </div>
+        <textarea id="kmMintOut" readonly style="width:100%; min-height:180px; margin-top:10px; font-family:monospace; font-size:12px;"></textarea>
+        <script>
+          (function(){
+            const btn = document.getElementById('kmMintRemoteBtn');
+            const adminEl = document.getElementById('kmMintAdmin');
+            const baseEl = document.getElementById('kmMintBase');
+            const out = document.getElementById('kmMintOut');
+            btn.addEventListener('click', async () => {
+              const base = (baseEl.value || '').trim();
+              const origin = base ? (base.startsWith('http') ? base.replace(/\/$/,'') : 'http://' + base.replace(/\/$/,'')) : window.location.origin;
+              const url = origin + '/auth/mint';
+              out.value = 'İstek: ' + url + ' …';
+              try {
+                const res = await fetch(url, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-admin-secret': adminEl.value || '',
+                  },
+                  body: JSON.stringify({ instance: '{{ name }}' }),
+                });
+                const text = await res.text();
+                try {
+                  out.value = JSON.stringify(JSON.parse(text), null, 2);
+                } catch {
+                  out.value = text;
+                }
+              } catch (e) {
+                out.value = String(e);
+              }
+            });
+          })();
+        </script>
+      </div>
+    </div>
+
+    <div class="card" style="border-color: color-mix(in oklab, var(--danger), transparent 60%);">
+      <h3>Tehlikeli bölge</h3>
+      <p class="muted">Klasörü kalıcı olarak siler (<code>instances/{{ name }}/</code>). <strong>scada-mcp-combined</strong> çalışıyorsa MCP listesi yenilenir.</p>
+      <form method="post" action="/instances/{{ name }}/delete" style="margin-top:12px; max-width:420px;">
+        <label>Silme onayı — tam instance adını yazın: <code>{{ name }}</code></label>
+        <input name="confirm_name" type="text" autocomplete="off" placeholder="{{ name }}" />
+        <div style="margin-top:12px;">
+          <button class="btn danger" type="submit" onclick="return confirm('Bu instance kalıcı silinecek. Emin misiniz?');">Instance sil</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Paths</h3>
+      <div><strong>Instance dir</strong>: <code>{{ instance_path }}</code></div>
+      <div><strong>instance.yaml</strong>: <code>{{ files.instance_yaml }}</code></div>
+      <div><strong>.env</strong>: <code>{{ files.dotenv }}</code></div>
+      <div><strong>manifest.json</strong>: <code>{{ files.manifest }}</code></div>
+    </div>
+  </div>
+{% endblock %}
+

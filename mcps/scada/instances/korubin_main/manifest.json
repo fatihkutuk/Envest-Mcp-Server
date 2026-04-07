@@ -1,0 +1,216 @@
+{
+  "_schema": "scada_mcp_manifest",
+  "version": 1,
+  "title_tr": "Korubin bulut / merkez SCADA MCP",
+  "purpose_tr": "Korubin.com merkez/bulut veritabanına bağlanan MCP. Çorum yerel için ayrı instance kullan.",
+  "tool_groups": [
+    {
+      "id": "routing",
+      "title_tr": "Yönlendirme / belirsizlik çözümü",
+      "tools": [
+        "envestbulutkorubin_get_korubin_ui_and_tool_routing_tr",
+        "envestbulutkorubin_get_scada_site_routing_hints",
+        "envestbulutkorubin_get_scada_mcp_manifest",
+        "envestbulutkorubin_get_scada_tag_naming_defaults_tr"
+      ]
+    },
+    {
+      "id": "nodes",
+      "title_tr": "Node / nokta sayımı",
+      "tools": []
+    },
+    {
+      "id": "scada_live",
+      "title_tr": "SCADA canlı veri (_tagoku)",
+      "tools": [
+        "envestbulutkorubin_get_scada_system_stats",
+        "envestbulutkorubin_get_device_data",
+        "envestbulutkorubin_get_device_tag_values",
+        "envestbulutkorubin_list_live_tag_across_nodes",
+        "envestbulutkorubin_search_tags"
+      ]
+    },
+    {
+      "id": "concepts",
+      "title_tr": "Kavram rehberi",
+      "tools": [
+        "envestbulutkorubin_get_korubin_data_concepts"
+      ]
+    },
+    {
+      "id": "nodes",
+      "title_tr": "Node / topo",
+      "tools": [
+        "envestbulutkorubin_get_node_counts",
+        "envestbulutkorubin_list_nodes",
+        "envestbulutkorubin_find_nodes_by_keywords",
+        "envestbulutkorubin_get_node",
+        "envestbulutkorubin_list_product_types"
+      ]
+    },
+    {
+      "id": "alarms",
+      "title_tr": "Alarmlar",
+      "tools": [
+        "envestbulutkorubin_list_alarms",
+        "envestbulutkorubin_get_active_alarms",
+        "envestbulutkorubin_get_alarm_subscribers"
+      ]
+    },
+    {
+      "id": "schema",
+      "title_tr": "DB şema / güvenli sorgu",
+      "tools": [
+        "envestbulutkorubin_get_database_schema",
+        "envestbulutkorubin_get_table_info",
+        "envestbulutkorubin_run_safe_query"
+      ]
+    },
+    {
+      "id": "semantics",
+      "title_tr": "Panel semantik / şablon",
+      "tools": [
+        "envestbulutkorubin_get_nview_equipment_profile",
+        "envestbulutkorubin_get_scada_semantics",
+        "envestbulutkorubin_get_view_tag_meanings",
+        "envestbulutkorubin_get_counter_semantics",
+        "envestbulutkorubin_resolve_semantic_tag_candidates",
+        "envestbulutkorubin_get_node_scada_context",
+        "envestbulutkorubin_get_node_panel_settings_guide",
+        "envestbulutkorubin_get_operational_engineering_hints",
+        "envestbulutkorubin_list_point_display_templates",
+        "envestbulutkorubin_read_point_display_template",
+        "envestbulutkorubin_list_point_display_files",
+        "envestbulutkorubin_search_point_display_templates",
+        "envestbulutkorubin_get_panel_url_for_template",
+        "envestbulutkorubin_extract_menu_links",
+        "envestbulutkorubin_summarize_point_display_template"
+      ]
+    },
+    {
+      "id": "dashboard",
+      "title_tr": "Dashboard / özet",
+      "tools": [
+        "envestbulutkorubin_get_scada_summary",
+        "envestbulutkorubin_get_node_distribution",
+        "envestbulutkorubin_get_channel_device_statistics",
+        "envestbulutkorubin_get_alarm_statistics"
+      ]
+    },
+    {
+      "id": "admin_users",
+      "title_tr": "Kullanıcı / yetki",
+      "tools": [
+        "envestbulutkorubin_get_user_permissions",
+        "envestbulutkorubin_get_node_permissions",
+        "envestbulutkorubin_list_user_groups",
+        "envestbulutkorubin_get_group_members",
+        "envestbulutkorubin_list_users",
+        "envestbulutkorubin_get_user",
+        "envestbulutkorubin_search_users",
+        "envestbulutkorubin_get_user_stats"
+      ]
+    },
+    {
+      "id": "tags_meta",
+      "title_tr": "Tag link / clone",
+      "tools": [
+        "envestbulutkorubin_list_tag_links",
+        "envestbulutkorubin_list_tag_clones"
+      ]
+    },
+    {
+      "id": "logs",
+      "title_tr": "Log parametreleri",
+      "tools": [
+        "envestbulutkorubin_list_log_params"
+      ]
+    },
+    {
+      "id": "kepware",
+      "title_tr": "Kepware / veri değişim",
+      "tools": [
+        "envestbulutkorubin_check_exchanger_status"
+      ]
+    },
+    {
+      "id": "kepware_more",
+      "title_tr": "Kepware cihaz / sürücü",
+      "tools": [
+        "envestbulutkorubin_list_channel_devices",
+        "envestbulutkorubin_get_channel_device_detail",
+        "envestbulutkorubin_get_device_connection_params",
+        "envestbulutkorubin_list_channel_types",
+        "envestbulutkorubin_list_device_types",
+        "envestbulutkorubin_get_device_type_tags",
+        "envestbulutkorubin_get_device_individual_tags",
+        "envestbulutkorubin_list_device_status_codes",
+        "envestbulutkorubin_list_drivers",
+        "envestbulutkorubin_get_driver_detail",
+        "envestbulutkorubin_list_service_instances",
+        "envestbulutkorubin_get_service_activities",
+        "envestbulutkorubin_get_device_all_tags",
+        "envestbulutkorubin_get_node_all_tags",
+        "envestbulutkorubin_get_tag_address"
+      ]
+    },
+    {
+      "id": "charts",
+      "title_tr": "Grafik (log)",
+      "tools": [
+        "envestbulutkorubin_get_chart_data",
+        "envestbulutkorubin_get_multi_chart_data",
+        "envestbulutkorubin_compare_log_metrics",
+        "envestbulutkorubin_get_node_log_chart_data",
+        "envestbulutkorubin_get_recent_log_chart_by_tag",
+        "envestbulutkorubin_analyze_log_trend",
+        "envestbulutkorubin_list_dma_station_nodes",
+        "envestbulutkorubin_analyze_dma_seasonal_demand",
+        "envestbulutkorubin_analyze_seasonal_level_profile"
+      ]
+    },
+    {
+      "id": "node_logs",
+      "title_tr": "Node log tabloları",
+      "tools": [
+        "envestbulutkorubin_get_node_log_data",
+        "envestbulutkorubin_get_node_log_summary",
+        "envestbulutkorubin_get_node_log_latest_values"
+      ]
+    },
+    {
+      "id": "products",
+      "title_tr": "Ürün kılavuzu (JSON)",
+      "tools": [
+        "envestbulutkorubin_search_product_manual",
+        "envestbulutkorubin_get_product_specs",
+        "envestbulutkorubin_get_product_settings",
+        "envestbulutkorubin_get_product_troubleshoot",
+        "envestbulutkorubin_get_product_sensor_info"
+      ]
+    },
+    {
+      "id": "export_reports",
+      "title_tr": "Export / raporlar (Excel PDF CSV)",
+      "tools": [
+        "envestbulutkorubin_export_log_data",
+        "envestbulutkorubin_generate_scada_report",
+        "envestbulutkorubin_generate_node_report",
+        "envestbulutkorubin_export_custom_data",
+        "envestbulutkorubin_export_active_alarms",
+        "envestbulutkorubin_get_pump_catalog_for_node",
+        "envestbulutkorubin_get_well_hydraulic_profile",
+        "envestbulutkorubin_analyze_pump_performance",
+        "envestbulutkorubin_search_pump_alternatives",
+        "envestbulutkorubin_calculate_hydraulic_metrics"
+      ]
+    },
+    {
+      "id": "ai_registry",
+      "title_tr": "AI modül / yetenek registry",
+      "tools": [
+        "envestbulutkorubin_get_korubin_ai_mcp_registry"
+      ]
+    }
+  ]
+}

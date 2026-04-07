@@ -1,0 +1,32 @@
+version: "3.8"
+
+# Gelistirme ortami icin override
+# Kullanim: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  scada-mcp:
+    build:
+      context: ./mcps/scada
+      dockerfile: Dockerfile
+    volumes:
+      - ./mcps/scada/src:/app/src
+      - ./mcps/scada/instances:/app/instances
+    environment:
+      - LOG_LEVEL=DEBUG
+
+  korucaps-mcp:
+    build:
+      context: ./mcps/korucaps
+      dockerfile: Dockerfile
+    volumes:
+      - ./mcps/korucaps/src:/app/src
+    environment:
+      - LOG_LEVEL=debug
+
+  # Dev modda SSL yok, sadece HTTP
+  nginx:
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro

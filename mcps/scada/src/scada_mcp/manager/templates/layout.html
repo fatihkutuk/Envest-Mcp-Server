@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title or "SCADA MCP Manager" }}</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0b0f17;
+        --panel: #111827;
+        --panel2: #0f172a;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --border: rgba(255,255,255,0.10);
+        --shadow: rgba(0,0,0,0.35);
+        --accent: #22c55e;
+        --accent2: #60a5fa;
+        --danger: #f87171;
+      }
+      @media (prefers-color-scheme: light) {
+        :root{
+          --bg:#f8fafc;
+          --panel:#ffffff;
+          --panel2:#f1f5f9;
+          --text:#0f172a;
+          --muted:#475569;
+          --border: rgba(15,23,42,0.12);
+          --shadow: rgba(2,6,23,0.08);
+        }
+      }
+      * { box-sizing: border-box; }
+      body { margin:0; background: var(--bg); color: var(--text); font: 14px/1.4 ui-sans-serif, system-ui, Segoe UI, Arial, sans-serif; }
+      a { color: inherit; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+      main { padding: 20px; max-width: 1180px; margin: 0 auto; }
+      h2,h3,h4 { margin: 0 0 10px 0; }
+      .topbar { position: sticky; top: 0; z-index: 10; background: color-mix(in oklab, var(--bg), var(--panel) 40%); border-bottom: 1px solid var(--border); backdrop-filter: blur(8px); }
+      .topbar-inner { max-width: 1180px; margin: 0 auto; padding: 14px 20px; display:flex; align-items:center; gap: 14px; }
+      .brand { display:flex; align-items:center; gap:10px; }
+      .brand strong { font-size: 13px; letter-spacing: .3px; text-transform: uppercase; }
+      .nav { display:flex; gap: 8px; }
+      .nav a { text-decoration:none; padding: 8px 10px; border-radius: 10px; border: 1px solid transparent; color: var(--muted); }
+      .nav a:hover { border-color: var(--border); background: rgba(255,255,255,0.04); color: var(--text); }
+      .row { display:flex; gap:18px; flex-wrap: wrap; align-items: stretch; }
+      .stack { display:flex; flex-direction:column; gap:14px; }
+      .card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 16px; min-width: 320px; flex: 1; box-shadow: 0 18px 40px var(--shadow); }
+      table { width:100%; border-collapse: collapse; }
+      th, td { border-bottom: 1px solid var(--border); padding: 12px 10px; text-align:left; vertical-align: top; }
+      th { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+      .pill { display:inline-flex; align-items:center; gap:8px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); background: rgba(255,255,255,0.04); color: var(--muted); }
+      .muted { color: var(--muted); }
+      .error { color: var(--danger); }
+      label { display:block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+      input, textarea, select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--panel2);
+        color: var(--text);
+        outline: none;
+      }
+      input:focus, textarea:focus, select:focus { border-color: color-mix(in oklab, var(--accent2), white 10%); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent2), transparent 78%); }
+      textarea { min-height: 120px; }
+      .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .grid3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+      @media (max-width: 900px) { .grid2,.grid3 { grid-template-columns: 1fr; } .card { min-width: 0; } }
+      .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); cursor:pointer; text-decoration:none; color: var(--text); }
+      .btn:hover { background: rgba(255,255,255,0.06); }
+      .btn.primary { border-color: color-mix(in oklab, var(--accent), transparent 40%); background: color-mix(in oklab, var(--accent), transparent 88%); }
+      .btn.primary:hover { background: color-mix(in oklab, var(--accent), transparent 82%); }
+      .btn.danger { border-color: color-mix(in oklab, var(--danger), transparent 40%); background: color-mix(in oklab, var(--danger), transparent 90%); }
+      .flash { border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; margin-bottom: 12px; background: rgba(255,255,255,0.04); }
+      .kv { display:grid; grid-template-columns: 180px 1fr; gap: 8px 12px; }
+      @media (max-width: 900px) { .kv { grid-template-columns: 1fr; } }
+      .modal-overlay { position: fixed; inset: 0; background: rgba(2,6,23,0.6); display:none; align-items:center; justify-content:center; padding: 18px; z-index: 50; }
+      .modal-overlay.open { display:flex; }
+      .modal { width: min(980px, 100%); max-height: min(88vh, 900px); overflow:hidden; background: var(--panel); border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 24px 70px rgba(0,0,0,0.55); }
+      .modal-head { display:flex; align-items:center; justify-content:space-between; gap: 10px; padding: 14px 14px 10px 14px; border-bottom: 1px solid var(--border); }
+      .tabs { display:flex; gap: 8px; padding: 0 14px; margin-top: 10px; }
+      .tab { padding: 8px 10px; border-radius: 999px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--muted); cursor:pointer; }
+      .tab.active { background: color-mix(in oklab, var(--accent2), transparent 88%); border-color: color-mix(in oklab, var(--accent2), transparent 50%); color: var(--text); }
+      .modal-body { padding: 14px; display:flex; flex-direction:column; gap: 10px; }
+      .modal-actions { display:flex; align-items:center; justify-content:space-between; gap: 10px; flex-wrap:wrap; }
+      .modal-actions-right { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; }
+      .modal-status { font-size: 12px; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <strong>SCADA MCP Manager</strong>
+          <span class="pill muted">local</span>
+        </div>
+        <nav class="nav">
+          <a href="/">Instances</a>
+          <a href="/instances/new">New SCADA</a>
+        </nav>
+        <div style="margin-left:auto" class="muted"><code>{{ root_dir }}</code></div>
+      </div>
+    </div>
+    <main>
+      {% if flash %}
+        <div class="flash">{{ flash }}</div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+
+    <div id="kmModalOverlay" class="modal-overlay" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="kmModalTitle">
+        <div class="modal-head">
+          <div>
+            <div id="kmModalTitle" style="font-weight:700">mcpServers JSON</div>
+            <div id="kmModalSubtitle" class="muted" style="margin-top:4px"></div>
+          </div>
+          <button class="btn" type="button" id="kmModalCloseBtn">Close</button>
+        </div>
+        <div class="tabs">
+          <button class="tab active" type="button" data-tab="local">Local</button>
+          <button class="tab" type="button" data-tab="remote">Remote</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-actions">
+            <div id="kmModalStatus" class="modal-status">Ready.</div>
+            <div class="modal-actions-right">
+              <button class="btn" type="button" id="kmModalCopyBtn">Copy</button>
+              <button class="btn primary" type="button" id="kmModalDownloadBtn">Download</button>
+            </div>
+          </div>
+          <textarea id="kmModalTextarea" readonly spellcheck="false"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function(){
+        const overlay = document.getElementById('kmModalOverlay');
+        const closeBtn = document.getElementById('kmModalCloseBtn');
+        const textarea = document.getElementById('kmModalTextarea');
+        const statusEl = document.getElementById('kmModalStatus');
+        const subtitleEl = document.getElementById('kmModalSubtitle');
+        const copyBtn = document.getElementById('kmModalCopyBtn');
+        const downloadBtn = document.getElementById('kmModalDownloadBtn');
+        const tabButtons = Array.from(document.querySelectorAll('.tab[data-tab]'));
+
+        let activeTab = 'local';
+        let payloadByTab = { local: '', remote: '' };
+        let filenameByTab = { local: 'mcpServers.local.json', remote: 'mcpServers.remote.json' };
+
+        function setStatus(msg){ statusEl.textContent = msg; }
+        function openModal(){ overlay.classList.add('open'); overlay.setAttribute('aria-hidden', 'false'); }
+        function closeModal(){ overlay.classList.remove('open'); overlay.setAttribute('aria-hidden', 'true'); }
+        function setActiveTab(tab){
+          activeTab = tab;
+          tabButtons.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+          textarea.value = payloadByTab[tab] || '';
+          downloadBtn.textContent = tab === 'remote' ? 'Download (Remote)' : 'Download (Local)';
+        }
+        async function fetchJson(url){
+          const res = await fetch(url, { headers: { 'accept': 'application/json' } });
+          const text = await res.text();
+          if(!res.ok){
+            throw new Error(text || ('HTTP '+res.status));
+          }
+          try {
+            const obj = JSON.parse(text);
+            return JSON.stringify(obj, null, 2);
+          } catch {
+            return text;
+          }
+        }
+        async function copyToClipboard(value){
+          await navigator.clipboard.writeText(value);
+        }
+        function downloadText(filename, value){
+          const blob = new Blob([value], { type: 'application/json;charset=utf-8' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          URL.revokeObjectURL(a.href);
+          a.remove();
+        }
+
+        window.kmOpenMcpServersModal = async function(opts){
+          payloadByTab = { local: '', remote: '' };
+          filenameByTab = opts.filenames || filenameByTab;
+          subtitleEl.textContent = opts.subtitle || '';
+          textarea.value = '';
+          setStatus('Loading…');
+          openModal();
+          setActiveTab('local');
+          try{
+            const [localJson, remoteJson] = await Promise.all([
+              fetchJson(opts.localUrl),
+              fetchJson(opts.remoteUrl),
+            ]);
+            payloadByTab.local = localJson;
+            payloadByTab.remote = remoteJson;
+            setStatus('Generated.');
+            setActiveTab(activeTab);
+          }catch(e){
+            setStatus('Error: '+ (e && e.message ? e.message : String(e)));
+          }
+        };
+
+        tabButtons.forEach(btn => btn.addEventListener('click', () => setActiveTab(btn.dataset.tab)));
+        closeBtn.addEventListener('click', closeModal);
+        overlay.addEventListener('click', (e) => { if(e.target === overlay) closeModal(); });
+        document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && overlay.classList.contains('open')) closeModal(); });
+
+        copyBtn.addEventListener('click', async () => {
+          const v = payloadByTab[activeTab] || '';
+          if(!v){ return; }
+          try{
+            await copyToClipboard(v);
+            setStatus('Copied to clipboard.');
+            setTimeout(()=>setStatus('Generated.'), 1200);
+          }catch(e){
+            setStatus('Copy failed: '+ (e && e.message ? e.message : String(e)));
+          }
+        });
+        downloadBtn.addEventListener('click', () => {
+          const v = payloadByTab[activeTab] || '';
+          if(!v){ return; }
+          const fn = filenameByTab[activeTab] || (activeTab + '.json');
+          downloadText(fn, v);
+          setStatus('Downloaded.');
+          setTimeout(()=>setStatus('Generated.'), 1200);
+        });
+      })();
+    </script>
+  </body>
+</html>
+
