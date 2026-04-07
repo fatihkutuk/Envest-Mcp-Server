@@ -1,68 +1,61 @@
-# Envest MCP Server - Canli Sunucu Deploy Rehberi
+# Ubuntu Sunucu Deploy Rehberi
 
 ## Gereksinimler
 
 - Ubuntu 22.04+
 - Python 3.10+
 - pip3
-- pm2 (Node.js ile kurulu)
-- Nginx (CloudPanel veya mevcut)
-- Cloudflare Tunnel (sunucu disariya kapali ise)
+- pm2 (`npm install -g pm2`)
+- Cloudflare hesabi (tunnel icin)
+- cloudflared (`apt install cloudflared` veya https://github.com/cloudflare/cloudflared)
 
 ## Adim 1: Dosyalari Sunucuya Kopyala
 
-Windows'tan:
 ```bash
-scp -r D:/LiveProject/Envest-Mcp-Server/mcps/scada root@SUNUCU_IP:/home/envest-mcp/htdocs/mcp.envest.com.tr/mcps/scada
-```
+# Ilk kurulum
+git clone <repo-url> /home/envest-mcp/htdocs/mcp.envest.com.tr
 
-Veya rsync ile (sadece degisen dosyalar):
-```bash
-rsync -avz --exclude='__pycache__' --exclude='node_modules' --exclude='*.pyc' \
+# Guncelleme (rsync ile sadece degisen dosyalar)
+rsync -avz --exclude='__pycache__' --exclude='*.pyc' --exclude='data/' --exclude='logs/' \
   D:/LiveProject/Envest-Mcp-Server/mcps/scada/ \
   root@SUNUCU_IP:/home/envest-mcp/htdocs/mcp.envest.com.tr/mcps/scada/
 ```
 
-## Adim 2: Python Bagimliliklari Kur
+## Adim 2: Python Bagimliliklari
 
 ```bash
-ssh root@SUNUCU_IP
 cd /home/envest-mcp/htdocs/mcp.envest.com.tr/mcps/scada
 pip3 install -e .
 pip3 install bcrypt
 ```
 
-## Adim 3: Log ve Data Dizinleri
+## Adim 3: Dizinler
 
 ```bash
 cd /home/envest-mcp/htdocs/mcp.envest.com.tr
 mkdir -p logs data
 ```
 
-## Adim 4: ecosystem.config.js Olustur
+## Adim 4: ecosystem.config.js
 
 ```bash
 cat > /home/envest-mcp/htdocs/mcp.envest.com.tr/ecosystem.config.js << 'EOF'
 module.exports = {
-  apps: [
-    {
-      name: "envest-mcp",
-      script: "python3",
-      args: "-m scada_mcp.combined --host 127.0.0.1 --port 8001 --require-token",
-      cwd: "/home/envest-mcp/htdocs/mcp.envest.com.tr/mcps/scada",
-      interpreter: "none",
-      env: {
-        LOG_LEVEL: "info",
-      },
-      autorestart: true,
-      max_restarts: 10,
-      restart_delay: 3000,
-      error_file: "/home/envest-mcp/htdocs/mcp.envest.com.tr/logs/error.log",
-      out_file: "/home/envest-mcp/htdocs/mcp.envest.com.tr/logs/out.log",
-      merge_logs: true,
-      log_date_format: "YYYY-MM-DD HH:mm:ss",
-    },
-  ],
+  apps: [{
+    name: "envest-mcp",
+    script: "python3",
+    args: "-m scada_mcp.combined --host 127.0.0.1 --port 8001 --require-token",
+    cwd: "/home/envest-mcp/htdocs/mcp.envest.com.tr/mcps/scada",
+    interpreter: "none",
+    env: { LOG_LEVEL: "info" },
+    autorestart: true,
+    max_restarts: 10,
+    restart_delay: 3000,
+    error_file: "/home/envest-mcp/htdocs/mcp.envest.com.tr/logs/error.log",
+    out_file: "/home/envest-mcp/htdocs/mcp.envest.com.tr/logs/out.log",
+    merge_logs: true,
+    log_date_format: "YYYY-MM-DD HH:mm:ss",
+  }],
 };
 EOF
 ```
@@ -74,52 +67,31 @@ cd /home/envest-mcp/htdocs/mcp.envest.com.tr
 pm2 delete envest-mcp 2>/dev/null
 pm2 start ecosystem.config.js
 pm2 save
-pm2 startup  # Sunucu reboot'ta otomatik baslasin
+pm2 startup  # Reboot'ta otomatik baslasin
 ```
 
-## Adim 6: Calistigini Dogrula
+## Adim 6: Dogrula
 
 ```bash
-# pm2 durumu
 pm2 status
-
-# Log kontrol
-pm2 logs envest-mcp --lines 20
-
-# Localhost test
-curl http://127.0.0.1:8001/
-# HTML donmeli (login sayfasina redirect)
-
+pm2 logs envest-mcp --lines 10
 curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8001/login
 # 200 donmeli
 ```
 
-## Adim 7: Nginx Ayari
+## Adim 7: Cloudflare Tunnel
 
-CloudPanel zaten mcp.envest.com.tr icin config olusturmus.
-Vhost'ta `proxy_buffering off` ekli olmali (SSE icin zorunlu):
+### Tunnel yoksa ilk kez olustur:
 
 ```bash
-# CloudPanel > Sites > mcp.envest.com.tr > Vhost
-# location / blogunda su satirlarin oldugundan emin ol:
-#   proxy_buffering off;
-#   proxy_cache off;
-#   proxy_set_header Authorization $http_authorization;
-```
-
-## Adim 8: Cloudflare Tunnel (Sunucu Disariya Kapali ise)
-
-Tunnel zaten kuruluysa:
-```bash
-pm2 restart mcp-tunnel
-```
-
-Yoksa:
-```bash
-# Tunnel olustur (bir kere yapilir)
+cloudflared tunnel login
 cloudflared tunnel create envest-mcp
+# TUNNEL_ID not et (ornek: aecfac20-88e8-42c9-82ad-537ce60ef0ce)
+```
 
-# Config yaz
+### Tunnel config:
+
+```bash
 cat > /root/.cloudflared/config.yml << 'EOF'
 tunnel: <TUNNEL_ID>
 credentials-file: /root/.cloudflared/<TUNNEL_ID>.json
@@ -127,63 +99,108 @@ credentials-file: /root/.cloudflared/<TUNNEL_ID>.json
 ingress:
   - hostname: mcp.envest.com.tr
     service: http://127.0.0.1:8001
+    originRequest:
+      httpHostHeader: "127.0.0.1:8001"
+      noTLSVerify: true
   - service: http_status:404
 EOF
+```
 
-# pm2 ile baslat
+**ONEMLI:** `httpHostHeader: "127.0.0.1:8001"` satirini MUTLAKA ekleyin.
+Bu olmadan MCP SSE baglantisi `421 Misdirected Request` veya `Invalid Host header` hatasi verir.
+
+### Tunnel'i pm2 ile baslat:
+
+```bash
 pm2 start cloudflared --name "mcp-tunnel" -- tunnel --config /root/.cloudflared/config.yml run envest-mcp
 pm2 save
 ```
 
-Cloudflare Dashboard > Zero Trust > Tunnels > envest-mcp > Public Hostname:
-- Subdomain: mcp
-- Domain: envest.com.tr
-- Service: http://127.0.0.1:8001
+### Cloudflare Dashboard'dan hostname ekle:
 
-## Adim 9: Dis Erisim Testi
+Zero Trust > Networks > Tunnels > envest-mcp > Public Hostname:
+- Subdomain: `mcp`
+- Domain: `envest.com.tr`
+- Service Type: HTTP
+- URL: `127.0.0.1:8001`
 
-```bash
-curl https://mcp.envest.com.tr/
-# Login sayfasina redirect olmali
-```
+### DNS ayari:
 
-Tarayicidan: https://mcp.envest.com.tr/login
-- Kullanici: admin
-- Sifre: admin (ilk giriste degistir!)
+Cloudflare DNS'te `mcp` subdomain'i icin A kaydi varsa silin.
+Tunnel otomatik CNAME olusturur. Olusturmazsa manuel ekleyin:
+- Type: CNAME
+- Name: mcp
+- Target: `<TUNNEL_ID>.cfargotunnel.com`
+- Proxy: ON
 
-## Adim 10: Token Olustur ve MCP Client Test
+## Adim 8: Cloudflare Ayarlari
 
-1. Admin panele gir: https://mcp.envest.com.tr/login
-2. Tokens > Yeni Token Olustur
-3. Instance sec (korubin_main, korucaps, vs.)
-4. Token Olustur > JWT kopyala
+**Rocket Loader KAPALI olmali** (Tailwind CSS'i bozar):
+- Cloudflare > envest.com.tr > Speed > Optimization > Rocket Loader > OFF
 
-LM Studio / Claude Desktop / Cursor config:
-```json
-{
-  "mcpServers": {
-    "envest": {
-      "url": "https://mcp.envest.com.tr/mcp/sse",
-      "headers": {
-        "Authorization": "Bearer <JWT_TOKEN>"
-      }
-    }
-  }
+Veya template'lerde `data-cfasync="false"` attribute'u ekli (zaten eklendi).
+
+## Adim 9: Nginx (CloudPanel) Ayarlari
+
+CloudPanel > Sites > mcp.envest.com.tr > Vhost:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8001/;
+    proxy_http_version 1.1;
+    proxy_buffering off;
+    proxy_cache off;
+    chunked_transfer_encoding on;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Authorization $http_authorization;
+    proxy_connect_timeout 900;
+    proxy_send_timeout 900;
+    proxy_read_timeout 900;
 }
 ```
 
+**ONEMLI:** `proxy_buffering off;` olmadan SSE calismaz.
+
+Static dosyalar icin symlink:
+```bash
+ln -sf /home/envest-mcp/htdocs/mcp.envest.com.tr/mcps/scada/src/scada_mcp/admin/static \
+       /home/envest-mcp/htdocs/mcp.envest.com.tr/static
+```
+
+## Adim 10: Test
+
+```bash
+# Sunucudan
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8001/login
+# 200
+
+# Tunnel uzerinden
+timeout 3 curl -s -N https://mcp.envest.com.tr/mcp/sse \
+  -H "Authorization: Bearer <TOKEN>" 2>&1
+# event: endpoint
+# data: /mcp/messages/?session_id=...
+```
+
+Tarayicidan: `https://mcp.envest.com.tr/login`
+- Kullanici: admin / admin (ilk giriste degistir!)
+
 ## Guncelleme
 
-Kod degistiginde:
 ```bash
-# Dosyalari kopyala (rsync ile sadece degisen)
+# Dosyalari rsync ile kopyala
 rsync -avz --exclude='__pycache__' --exclude='*.pyc' --exclude='data/' --exclude='logs/' \
   D:/LiveProject/Envest-Mcp-Server/mcps/scada/ \
   root@SUNUCU_IP:/home/envest-mcp/htdocs/mcp.envest.com.tr/mcps/scada/
 
-# Sunucuda restart
+# Restart
 ssh root@SUNUCU_IP "pm2 restart envest-mcp"
 ```
+
+**NOT:** `data/` ve `logs/` dizinleri rsync'ten haric - tokens.json ve users.json korunur.
 
 ## pm2 Komutlari
 
@@ -198,31 +215,33 @@ pm2 monit               # Izleme paneli
 
 ## Sorun Giderme
 
+### 421 Misdirected Request
+Cloudflare tunnel config'inde `httpHostHeader` eksik:
+```yaml
+originRequest:
+  httpHostHeader: "127.0.0.1:8001"
+```
+
+### CSS bozuk
+Cloudflare Rocket Loader'i kapat veya `data-cfasync="false"` attribute'u ekle.
+Static symlink kontrol: `ls -la /home/envest-mcp/htdocs/mcp.envest.com.tr/static/`
+
+### Token calismsiyor
+Admin panelden yeni token olustur. Eski `/auth/mint` token'lari artik gecersiz.
+
 ### Sunucu baslamiyor
 ```bash
-pm2 logs envest-mcp --lines 50
-# Python hata mesajina bak
+pm2 logs envest-mcp --lines 30
 ```
 
 ### Port kullaniliyor
 ```bash
 ss -tlnp | grep 8001
-# Baska process varsa oldur
 kill -9 <PID>
 ```
 
-### Token calismiyor
-Admin panelden yeni token olustur. Eski /auth/mint token'lari artik gecersiz.
-
 ### DB baglantisi basarisiz
-Instance .env dosyasindaki DB bilgilerini kontrol et:
+Instance .env dosyasini kontrol et:
 ```bash
-cat /home/envest-mcp/htdocs/mcp.envest.com.tr/mcps/scada/instances/<instance_name>/.env
-```
-
-### Nginx 502 Bad Gateway
-pm2 calisiyor mu kontrol et:
-```bash
-pm2 status
-curl http://127.0.0.1:8001/
+cat /home/envest-mcp/htdocs/mcp.envest.com.tr/mcps/scada/instances/<instance>/.env
 ```
