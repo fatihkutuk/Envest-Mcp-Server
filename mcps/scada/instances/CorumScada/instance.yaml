@@ -8,6 +8,7 @@ panel_base_url: ""
 
 toolpacks:
   - "scada"
+  - "skills"
 
 db:
   host: "85.111.94.231"

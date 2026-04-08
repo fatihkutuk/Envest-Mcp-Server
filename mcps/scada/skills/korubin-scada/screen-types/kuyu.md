@@ -102,7 +102,46 @@ Kuyu verisi almak icin:
 4. `compare_log_metrics(nodeId, primaryTagHint="debi", secondaryTagHint="guc")` - Debi-guc karsilastirma
 5. `analyze_seasonal_level_profile(nodeId, tagHint="SuSeviye")` - Mevsimsel seviye profili
 
+## Pompa Secimi Icin Dogru Veri Alma
+
+**KRITIK:** Pompa boyutlandirma icin CANLI tag verilerini kullan, node parametrelerini (np_) KULLANMA!
+
+### Yanlis Yaklasim (YAPMA!)
+- `np_PompaDebi` → Bu pompa katalogundan girilmis STATIK deger, gercek debi degil
+- `XD_BasmaYukseklik` → Bu sabit ayar degeri, gercek Hm degil
+
+### Dogru Yaklasim
+1. **Debi icin:** `Debimetre` veya `Debimetre1` tag'ini oku (canli m3/h)
+   - Lt/sn ise x3.6 ile m3/h'e cevir
+   - `get_device_tag_values(deviceId=nodeId, tagNames=["Debimetre"])` kullan
+
+2. **Basma yuksekligi icin:** `ToplamHm` tag'ini oku (canli metre)
+   - ToplamHm yoksa: `BasincSensoru` (bar) x 10.2 = metre
+   - `get_device_tag_values(deviceId=nodeId, tagNames=["ToplamHm"])` kullan
+
+3. **Pompa ara:**
+   ```
+   search_pumps(
+     flow_m3h=<Debimetre canli degeri>,
+     head_m=<ToplamHm canli degeri>,
+     application="groundwater",
+     sub_application="WELLINS"
+   )
+   ```
+
+### Ornek Is Akisi
+```
+Kullanici: "Selafur Kuyu 4 icin pompa sec"
+
+1. find_nodes_by_keywords("selafur kuyu 4") → nodeId bul
+2. get_device_tag_values(deviceId=nodeId, tagNames=["Debimetre","ToplamHm","An_Guc"])
+   → Debimetre=155 m3/h, ToplamHm=72 m, An_Guc=45 kW
+3. search_pumps(flow_m3h=155, head_m=72, application="groundwater", sub_application="WELLINS")
+   → En uygun pompalar listelenir
+```
+
 ## Onemli Not
 - Kuyu ekranlarinda Lt/sn tag'i varsa m3/h'e donusum (x3.6) otomatik yapilir
 - `process_adapter = "well"` oldugunda Lt/sn oncelikli alinir (yanlis birim riski azaltilir)
 - Pompa verimlilik hesabi: debi, basinc (veya Hm tag) ve guc gerektirir
+- **np_ ile baslayan parametreler STATIK katalog degerleridir, canli olcum degil!**

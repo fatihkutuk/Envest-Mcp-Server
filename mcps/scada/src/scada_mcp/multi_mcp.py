@@ -340,6 +340,12 @@ class MultiMcpDispatchASGI:
             "\nWhen the user mentions a specific system/site name, use the matching prefix. "
             "If unclear, ask which system they mean before calling a tool. "
             "NEVER mix prefixes in a single query - each tool call must use the prefix of the target system."
+            "\n\nIMPORTANT - Skills: If list_skills tool is available, call it FIRST when starting a new task. "
+            "Skills contain domain knowledge (tag naming rules, screen types, device specs) that help you "
+            "use the correct tags and parameters. Read the relevant skill BEFORE calling SCADA tools."
+            "\n\nIMPORTANT - Pump selection: When selecting pumps for a SCADA node, read LIVE tag values "
+            "(Debimetre, ToplamHm) NOT static node parameters (np_PompaDebi, XD_BasmaYukseklik). "
+            "np_ parameters are catalog values, NOT real measurements."
         )
         instructions = "\n".join(routing_lines)
 

@@ -8,6 +8,10 @@ mcp_instructions: |
 tool_prefix: "envestbulutkorubin_"
 panel_base_url: "korubin.com"
 
+toolpacks:
+  - "scada"
+  - "skills"
+
 db:
   host: "85.111.94.232"
   port: 3306
