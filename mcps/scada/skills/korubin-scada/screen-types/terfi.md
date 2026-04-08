@@ -80,8 +80,37 @@ version: "1.0.0"
 | Basinc | Kuyu cikis + hat | Giris + cikis |
 | Pompa sayisi | Genelde 1 | 1-10+ arasi |
 
+## Pompa Secimi (TERFi = CR serisi!)
+
+**KRITIK:** Terfi istasyonlari icin **CR serisi** (dikey santrifuj) secilmeli.
+SP serisi (dalgic) terfi icin UYGUN DEGILDIR - SP sadece kuyu icin!
+
+### Pompa Seri Rehberi
+
+| Sistem Tipi | Pompa Serisi | application | sub_application |
+|-------------|-------------|-------------|-----------------|
+| **Kuyu** (dalgic) | SP | groundwater | WELLINS |
+| **Terfi** (basinc artirma) | CR, CRN, TP, NB | booster | BOOSPUMP |
+| **Depo** (transfer) | CR, TP | domestic | PUMPSDO |
+
+### Dogru Yaklasim
+1. Canli tag oku: `Debimetre` ve `ToplamHm` (veya `BasincSensoru` x 10.2)
+2. Pompa ara:
+   ```
+   search_pumps(
+     flow_m3h=<Debimetre>,
+     head_m=<ToplamHm>,
+     application="booster",
+     sub_application="BOOSPUMP"
+   )
+   ```
+
+### Emin Degilsen SOR!
+Kullanici "pompa sec" dediginde sistem tipi belirsizse:
+- "Bu kuyu mu yoksa terfi istasyonu mu?" diye sor
+- Kuyu ise → application="groundwater", sub_application="WELLINS" (SP serisi)
+- Terfi ise → application="booster", sub_application="BOOSPUMP" (CR serisi)
+
 ## Veri Sorgulama
 - `get_device_data(deviceId=nodeId)` - Tum canli tag degerleri
 - `compare_log_metrics(nodeId, primaryTagHint="debi", secondaryTagHint="guc")` - Debi vs guc
-- `get_pump_catalog_for_node(nodeId)` - Pompa bilgisi
-- `analyze_pump_performance(nodeId)` - Pompa performans analizi

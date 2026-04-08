@@ -37,22 +37,39 @@ def _pool_key(db: DbConfig) -> tuple[str, int, str]:
     return (db.host, db.port, db.dbname)
 
 
+class DatabaseConnectionError(Exception):
+    """Sanitized DB connection error - never exposes credentials."""
+    pass
+
+
 def _create_connection(db: DbConfig) -> pymysql.connections.Connection:
     """Create a fresh PyMySQL connection."""
     logger.debug("Creating new DB connection to %s:%d/%s", db.host, db.port, db.dbname)
-    return pymysql.connect(
-        host=db.host,
-        port=db.port,
-        user=db.username,
-        password=db.password,
-        database=db.dbname,
-        charset=db.charset,
-        connect_timeout=max(1, min(30, int(db.connect_timeout_sec))),
-        read_timeout=max(1, min(120, int((db.query_timeout_ms + 999) / 1000))),
-        write_timeout=max(1, min(120, int((db.query_timeout_ms + 999) / 1000))),
-        cursorclass=pymysql.cursors.DictCursor,
-        autocommit=True,
-    )
+    try:
+        return pymysql.connect(
+            host=db.host,
+            port=db.port,
+            user=db.username,
+            password=db.password,
+            database=db.dbname,
+            charset=db.charset,
+            connect_timeout=max(1, min(30, int(db.connect_timeout_sec))),
+            read_timeout=max(1, min(120, int((db.query_timeout_ms + 999) / 1000))),
+            write_timeout=max(1, min(120, int((db.query_timeout_ms + 999) / 1000))),
+            cursorclass=pymysql.cursors.DictCursor,
+            autocommit=True,
+        )
+    except pymysql.err.OperationalError as e:
+        # Sanitize: never expose host/IP/password in error messages returned to LLM
+        code = e.args[0] if e.args else 0
+        if code == 2003:
+            raise DatabaseConnectionError("Database server unreachable. Contact administrator.") from None
+        elif code == 1045:
+            raise DatabaseConnectionError("Database authentication failed. Contact administrator.") from None
+        elif code == 1049:
+            raise DatabaseConnectionError("Database not found. Contact administrator.") from None
+        else:
+            raise DatabaseConnectionError(f"Database connection error (code {code}). Contact administrator.") from None
 
 
 def _is_connection_alive(conn: pymysql.connections.Connection) -> bool:

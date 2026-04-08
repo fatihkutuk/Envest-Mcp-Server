@@ -119,7 +119,7 @@ Kuyu verisi almak icin:
    - ToplamHm yoksa: `BasincSensoru` (bar) x 10.2 = metre
    - `get_device_tag_values(deviceId=nodeId, tagNames=["ToplamHm"])` kullan
 
-3. **Pompa ara:**
+3. **Pompa ara (KUYU = SP serisi!):**
    ```
    search_pumps(
      flow_m3h=<Debimetre canli degeri>,
@@ -128,6 +128,8 @@ Kuyu verisi almak icin:
      sub_application="WELLINS"
    )
    ```
+   **KUYU icin SADECE SP serisi (dalgic pompa) secilmeli!**
+   CR, TP, NB gibi seriler kuyu icin UYGUN DEGILDIR - bunlar terfi/basinc artirma icin.
 
 ### Ornek Is Akisi
 ```
