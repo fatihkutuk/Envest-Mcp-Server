@@ -307,6 +307,19 @@ class ScadaNodesPack:
                     "İlk satırlar genelde en kısa ve en iyi isim eşleşmesidir; birden fazla satır varsa "
                     "nName ve urun_tipi ile seçin (kuyu: genelde «Koru1000 Well» / nView a-kuyu-envest)."
                 )
+                # Her node için nView'a bağlı skill önerisi — ayar/menü/çalışma modu soruları için
+                for n in out.get("nodes", []):
+                    nv = str(n.get("nView") or "")
+                    if nv:
+                        n["ekran_tipi_skill_path"] = f"screen-types/nview/{nv}.md"
+                out["ayar_ve_menu_soru_icin_sonraki_adim_tr"] = (
+                    "Kullanıcı 'ayar', 'çalışma modu', 'nereden ayarlayacağım', 'menü' gibi bir şey "
+                    "sorduysa: get_skill(skill_name='korubin-scada', file_path='screen-types/nview/<nView>.md') "
+                    "ile o nView'a özel skill dosyasını okuyun; içindeki 'Alt Menü Sayfaları' tablosunda "
+                    "hangi alt sayfanın hangi parametreleri ayarladığı yazar. Örn: 'çalışma modu' -> "
+                    "'calismamod' sayfası (XC_SabitMod* parametreleri). Canlı değer için ayrıca "
+                    "get_device_tag_values(tagNames=['XC_CalismaModu']) çağrılabilir."
+                )
             return out
 
         @mcp.tool(name=tool)
@@ -317,7 +330,16 @@ class ScadaNodesPack:
             anahtar_kelime: str = "",
             ara: str = "",
         ) -> str:
-            """Node arama (isim, nView, nType). nView alt dizgesi ve ürün tipi adı dahil aranır."""
+            """Node arama (isim, nView, nType). nView alt dizgesi ve ürün tipi adı dahil aranır.
+
+            AYAR / MENÜ / ÇALIŞMA MODU soruları için iş akışı:
+            1) Bu tool ile node'u bul (nodeId + nView alırsın).
+            2) get_skill(skill_name='korubin-scada', file_path='screen-types/nview/<nView>.md')
+               ile o ekran tipinin 'Alt Menü Sayfaları' ve 'Arayüz Ayarları' tablolarını oku.
+            3) Canlı değer gerekiyorsa get_device_tag_values ile ilgili tag'i oku.
+            Bu akış search_product_manual / get_product_specs YOLU DEĞİLDİR — onlar cihaz kataloğu,
+            panel ayar menüsü değil.
+            """
             return guard(tool, _find_nodes_by_keywords_impl)(
                 keywords, nType, limit, anahtar_kelime, ara
             )
@@ -351,11 +373,27 @@ class ScadaNodesPack:
                     node["aktif_log_sayisi"] = int(cur.fetchone()["c"])
                     cur.execute("SELECT id, nName, nType, nState FROM node WHERE nBase = %s ORDER BY nName LIMIT 100", (nid,))
                     node["alt_nodeler"] = list(cur.fetchall())
+            # nView'a özel ekran skill dosyası önerisi — ayar/menü/çalışma modu sorularında kritik
+            nv = str(node.get("nView") or "")
+            if nv:
+                node["ekran_tipi_skill_path"] = f"screen-types/nview/{nv}.md"
+                node["ekran_tipi_skill_yonlendirme_tr"] = (
+                    f"Bu node ekran tipi '{nv}'. Ayar/menü/konfigürasyon sorusu için: "
+                    f"get_skill(skill_name='korubin-scada', file_path='screen-types/nview/{nv}.md') "
+                    "çağırın. Skill dosyasının 'Alt Menü Sayfaları' tablosunda hangi alt sayfa hangi "
+                    "parametreleri düzenliyor açık yazar (ör. calismamod -> XC_SabitMod*, "
+                    "emniyet -> XE_*, sensor -> XS_* vb.). 'Arayüz Ayarları' tablosu ui_* bayraklarıyla "
+                    "hangi tag'in aktif olduğunu gösterir."
+                )
             return node
 
         @mcp.tool(name=tool)
         def get_node(nodeId: int) -> str:
-            """Tek node detayı (nView, nType, parametreler vb.). Panel şablon/menü için nView kritik alandır."""
+            """Tek node detayı (nView, nType, parametreler vb.). Panel şablon/menü için nView kritik alandır.
+
+            Çıktıda 'ekran_tipi_skill_path' varsa: get_skill ile o dosyayı mutlaka okuyun — içinde
+            bu ekran tipinin alt menüleri, ayar parametreleri, hangi tag nerede gibi tam referans var.
+            Bu, search_product_manual / get_product_specs YERİNE kullanılır (onlar cihaz kataloğu)."""
             return guard(tool, _get_node_impl)(nodeId)
 
         # --- list_product_types ---
@@ -670,7 +708,10 @@ class ScadaNodesPack:
 
         @mcp.tool(name=tool)
         def get_node_panel_settings_guide(node_id: int, topic: str = "") -> str:
-            """Node panel ayarları rehberi. Hints JSON yoksa `panel_hints=false` döner; bu durumda MENU.phtml araçlarını kullanın."""
+            """DEPRECATED — çalışma modu / ayar / menü soruları için bu yerine:
+            get_skill(skill_name='korubin-scada', file_path='screen-types/nview/<nView>.md').
+            Bu tool eski JSON hint dosyasına bakar; nView skill dosyaları çok daha zengin
+            (her alt menü sayfasının başlığı + XC_*/XS_*/XE_* ayar parametreleri)."""
             return guard(prefixed_name(prefix, "get_node_panel_settings_guide"), _get_node_panel_settings_guide_impl)(node_id, topic)
 
         # --- get_operational_engineering_hints ---

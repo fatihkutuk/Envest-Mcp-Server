@@ -22,15 +22,34 @@ Platform bilesenleri:
 ## Sub-Files
 
 ### Screen Types (`screen-types/`)
-Ekran tiplerine gore SCADA bilgisi. Her dosya bir nView ailesini kapsar.
+Ekran tiplerine gore SCADA bilgisi. Her aile dosyasi bir nView ailesini (kuyu, terfi, depo, dma, system) kapsar.
 
 | Dosya | Aciklama |
 |-------|----------|
-| [kuyu.md](screen-types/kuyu.md) | Kuyu (derin kuyu / dalgic pompa) ekranlari |
-| [terfi.md](screen-types/terfi.md) | Terfi istasyonu (booster/riser) ekranlari |
-| [depo.md](screen-types/depo.md) | Su deposu ekranlari |
-| [dma.md](screen-types/dma.md) | DMA (izole alt olcum bolgesi) ekranlari |
-| [system.md](screen-types/system.md) | Sistem / genel gozetim ekranlari |
+| [kuyu.md](screen-types/kuyu.md) | Kuyu (derin kuyu / dalgic pompa) ekran ailesi |
+| [terfi.md](screen-types/terfi.md) | Terfi istasyonu (booster/riser) ekran ailesi |
+| [depo.md](screen-types/depo.md) | Su deposu ekran ailesi |
+| [dma.md](screen-types/dma.md) | DMA (izole alt olcum bolgesi) + tez yontemi basinc olcekleme |
+| [system.md](screen-types/system.md) | Sistem / genel gozetim ekran ailesi |
+
+### Per-nView Details (`screen-types/nview/`) **otomatik uretilmis**
+
+Her spesifik nView icin tek bir `.md` dosyasi — GENEL.phtml'den cikarilmis tag/birim/etiket/rol tablosu, alt menu sayfalari, JS `data.*` mod/alarm referanslari ve (varsa) `uisettings.phtml`'den ui_* bayraklari.
+
+**Kapsam:** DB'de en cok kullanilan 53 nView icin `screen-types/nview/<nView>.md` dosyasi uretilmistir. Liste (azalan kullanim sayisina gore):
+
+| Aile | nView'lar |
+|---|---|
+| **Kuyu** | `a-kuyu-envest` (668), `a-aqua-cnt-kuyu-v2` (370), `a-kuyu-p-v4` (43), `a-kuyu-p` (27), `a-kuyu-m` (24), `a-aqua-cnt-kuyu` (18), `a-kuyu-cp110gm` (14), `a-aqua-mini-kuyu-v1.0` (10), `a-kuyu-p-v4.1` (9), `a-kuyu-cp100gm` (9), `a-kuyu-envest-drenaj` (9), `a-kuyu-rtu-v1` (5), `a-kuyu-OCP110` (4) |
+| **Depo** | `a-depo-envest` (195), `a-aqua-cnt-depo-klor` (75), `a-aqua-cnt-depo-v2` (73), `a-depo-p-b` (18), `a-aqua-mini-depo-v1.0` (15), `a-aqua-cnt-depo` (12), `a-depo-envest-brm` (7), `a-depo-p` (6), `a-depo-OCS110` (6), `a-depo-aski-1000depo` (6), `a-depo-tosya` (3) |
+| **Terfi** | `a-terfi-envest` (117), `a-aqua-cnt-terfi-v2` (26), `a-aqua-cnt-terfi-v2-3b` (26), `a-terfi-p-v3` (10), `a-terfi-p-v4` (8), `a-terfi-p` (4), `a-sanko-terfi` (4), `a-terfi-2p-envest-y` (3), `a-terfi-bilge-otomasyon` (3), `a-terfi-envestdalgic` (3) |
+| **DMA** | `a-dma-p-v3` (29), `a-aqua-cnt-dma-v1.2` (27), `a-gaski-dma` (20), `a-aqua-cnt-dma-klorv2` (7), `a-aqua-cnt-dma` (-), `a-aqua-cnt-dma-klor` (-), `a-aqua-cnt-dma-klorindividual` (-), `a-gaski-dma-v0.1` (4), `a-dma-p` (-), `a-dma-ocp110` (-) |
+| **Diger** | `_a-multi` (270), `a-atik` (12), `a-hidro-p-v3` (11), `a-atik-cc120gm` (9), `a-aqua-cnt-lowpower` (8), `a-gozlem-m` (7), `a-sanal-d` (7), `a-aqua-cnt-bkv` (6), `a-gaz-hakkari` (4), `a-gaz-meha` (4), `a-sogutma-temsu-f4` (4), `a-tmaster` (3), `a-izleme-p` (3), `a-pompa-test` (3) |
+
+- **Ne zaman kullanilir:** Bir node'un `nView` alani bilindiginde o ekrana ozel tag semantigini (ornek: `a-dma-p-v3`'te `BasincSensoru = Cikis Basinci / bar`, `GirisBasinc = Giris Basinci / bar`) kesinlemek icin.
+- **Uretim:** `python scripts/generate_nview_skills.py --nview <name>` veya `--all` ile toplu yenileme. Kaynak: `//10.10.10.72/public/dev.korubin/app/views/point/display/common/<nView>/`
+- **Bulma:** Skill loader `rglob("*.md")` kullandigi icin ayri manifest gerekmez.
+- **uisettings.phtml:** Bazi DMA/depo/BKV nView'larinda (`ui_girisbasinc`, `ui_cikisbasinc`, `ui_debimetre1/2` vb.) node konfigurasyonuna gore tag'ler aktif olur — skill icindeki "Arayuz Ayarlari" tablosundan kontrol edilir.
 
 ### Conventions (`conventions/`)
 | Dosya | Aciklama |
@@ -79,6 +98,23 @@ https://{panel_base_url}/panel/point/{nodeId}/{segment}
 4. **Counter (_servercounters)**: Sayac degerleri (toplam debi vb.)
 
 ### Tool Routing Karar Agaci
+
+**EN SIK SORU: "X noktasinda Y ayarini nereden yaparim / calisma modu ne / emniyet nasil ayarlanir"**
+
+Zorunlu akis (3 adim, baska tool eklemeyin):
+1. `find_nodes_by_keywords(keywords="<node adi>")` -> nodeId ve nView'i alin
+2. `get_skill(skill_name="korubin-scada", file_path="screen-types/nview/<nView>.md")`
+   -> dosyadaki "Alt Menü Sayfaları" tablosunda hangi alt sayfa hangi ayari (XC_*, XS_*, XE_*, XD_*, XM_*, XINV_*, XHID_*, X_*) iceriyor acik yazar
+3. (Istege bagli) Canli deger icin `get_device_tag_values(deviceId=nodeId, tagNames=["XC_CalismaModu", ...])`
+
+YANLIS YOL (bu sorularda KULLANMAYIN): `search_product_manual`, `get_product_specs`,
+`get_product_settings`, `get_product_troubleshoot`, `get_operational_engineering_hints`,
+`get_scada_summary`, `get_scada_semantics`, `get_database_schema`, `run_safe_query`,
+`read_point_display_template`. Bunlar cihaz katalog / genel bilgi icindir; SCADA panel
+menusundeki ayar yerini soylemez.
+
+---
+
 - **Urun/cihaz dokumani sorusu** (Aqua 100, modem kodu, LED durumlari, modbus haritasi):
   -> `get_product_specs`, `search_product_manual`, `get_product_settings`, `get_product_troubleshoot`
 - **Anlik deger / alarm / trend sorusu** (su an kac bar, canli debi, aktif alarm, grafik):
@@ -88,5 +124,7 @@ https://{panel_base_url}/panel/point/{nodeId}/{segment}
 - **Panel ekran sorusu** (hangi menu, sensor sayfasi, sablonda ne var):
   -> `get_node` ile nView al, sonra `read_point_display_template` ile MENU/GENEL oku
 - **DMA debi profili / K-Means**: -> `analyze_dma_seasonal_demand`
+- **DMA basinc bandi / PRV set cizelgesi / "X-Y bar'a olcekle"**: -> `analyze_dma_seasonal_demand(minPressure=X, maxPressure=Y)` (BasincSensoru tag grafigi DEGIL)
 - **Debi-guc karsilastirma**: -> `compare_log_metrics`
 - **Seviye profili**: -> `analyze_seasonal_level_profile`
+- **Bir node'un ekran tagleri sorulunca** (ornek: "a-kuyu-envest'te toplamhm nedir"): once aile skili (kuyu.md), sonra `screen-types/nview/<nView>.md` detay tablosu.

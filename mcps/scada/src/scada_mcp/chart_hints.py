@@ -30,7 +30,12 @@ DMA_ANALIZ_SONRASI_GRAFIK_TALIMAT_TR = (
     "tez_scatter_chart (scatter, küme rengi) + kök _type_chart line kullanın. "
     "get_chart_data, get_node_log_chart_data, get_multi_chart_data bu istek için ÇAĞIRILMAZ. "
     "analyze_dma_seasonal_demand tekrar çağrılmaz (veri zaten burada). "
-    "Düşünce zincirinde aynı cümleyi on kez tekrarlamayın; maksimum 2 cümle."
+    "Düşünce zincirinde aynı cümleyi on kez tekrarlamayın; maksimum 2 cümle. "
+    "İSTİSNA — basınç ölçekleme: Kullanıcı «X-Y bar arasına ölçekle / basınç bandı / PRV set çizelgesi» derse: "
+    "analyze_dma_seasonal_demand'i minPressure=X, maxPressure=Y ile TEKRAR çağırın "
+    "(yeni parametre olduğu için aynı-analiz-aynı-parametre kuralı ihlal edilmez). "
+    "BasincSensoru log grafiği/tag'i bu istek için KULLANILMAZ; ölçekleme debi küme merkezlerine uygulanır "
+    "ve sonuçta tez_basinc_ayarlama.calisma_tablosu döner."
 )
 
 # Genel döngü önleme — tüm araç yanıtlarına uygulanabilir.

@@ -321,6 +321,92 @@ def _medoid_hour_per_cluster(x: list[float], labels: list[int], k: int) -> list[
     return out
 
 
+def _map_minmax(values: list[float], dst_min: float, dst_max: float) -> list[float]:
+    """MATLAB mapminmax(x', a, b)' eşdeğeri: [min(x), max(x)] → [dst_min, dst_max].
+    Tüm değerler eşitse orta nokta döndürülür (sıfıra bölmeyi önler)."""
+    if not values:
+        return []
+    lo = min(values)
+    hi = max(values)
+    rng = hi - lo
+    if rng <= 1e-12:
+        mid = (dst_min + dst_max) / 2.0
+        return [round(mid, 4) for _ in values]
+    scale = (dst_max - dst_min) / rng
+    return [round(dst_min + (v - lo) * scale, 4) for v in values]
+
+
+def _build_calisma_tablosu(
+    medoids_by_rank: list[dict[str, Any]],
+    pressures_by_rank: list[float],
+) -> list[dict[str, Any]]:
+    """Tez kodundaki (satır 47-58) çalışma tablosu üretimi.
+
+    Ardışık medoid saatlerinin ortalamasından zaman dilimi sınırları türetilir
+    (24h döngüsü). Her dilim için: başlangıç sa:dk, bitiş sa:dk, debi, basınç_set.
+    """
+    if not medoids_by_rank:
+        return []
+    # Medoidleri saate göre sırala (tezdeki `sirali = ctrs(i,:)` karşılığı)
+    ordered = sorted(
+        medoids_by_rank,
+        key=lambda m: float(m["saat"]),
+    )
+    n = len(ordered)
+    # basson: ardışık saatler; son satırda sarma +24
+    hours = [float(m["saat"]) for m in ordered]
+    basson: list[tuple[float, float]] = []
+    for i in range(n):
+        bas = hours[i]
+        son = hours[(i + 1) % n]
+        if (i + 1) == n:
+            son += 24.0
+        basson.append((bas, son))
+    # bassonort: geçiş orta noktaları (tez satır 50)
+    bassonort = [(b + s) / 2.0 for (b, s) in basson]
+    # calismazamani: dilim i = [bassonort(i), bassonort(i+1)] (son dilim sarmalanır)
+    # Her dilime ordered[i+1]'in değeri atanır — çünkü tezde basson(i) = sirali(i+1,1)
+    # yani dilim medoid arası bölgedir, debi değeri bir sonraki medoidin değeridir.
+    # Rank hizası: pressures_by_rank[k] -> kume_no=k+1. Her medoidin kume_no'sunu kullanıyoruz.
+    rows: list[dict[str, Any]] = []
+    for i in range(n):
+        start_dec = bassonort[i] % 24.0
+        end_raw = bassonort[(i + 1) % n]
+        end_dec = end_raw % 24.0
+        # Dilime atanan medoid: bir sonraki medoid (tez satır 55 ve 58 ile uyumlu)
+        med = ordered[(i + 1) % n]
+        kn = int(med["kume_no"])
+        debi = float(med["deger"])
+        # rank'e göre basınç seti (kume_no - 1 rank index'i)
+        pset = None
+        if pressures_by_rank and 1 <= kn <= len(pressures_by_rank):
+            pset = float(pressures_by_rank[kn - 1])
+        s1 = int(start_dec)
+        d1 = int(round((start_dec - s1) * 60))
+        if d1 == 60:
+            s1 = (s1 + 1) % 24
+            d1 = 0
+        s2 = int(end_dec)
+        d2 = int(round((end_dec - s2) * 60))
+        if d2 == 60:
+            s2 = (s2 + 1) % 24
+            d2 = 0
+        rows.append(
+            {
+                "kume_no": kn,
+                "baslangic_saat": s1,
+                "baslangic_dk": d1,
+                "bitis_saat": s2,
+                "bitis_dk": d2,
+                "debi_m3h": round(debi, 4),
+                "basinc_set_bar": round(pset, 4) if pset is not None else None,
+            }
+        )
+    # Sonuç: sunum için başlangıç saatine göre sırala
+    rows.sort(key=lambda r: (int(r["baslangic_saat"]), int(r["baslangic_dk"])))
+    return rows
+
+
 def _bands_from_labels(
     labels: list[int], centroids: list[float], value_key: str = "ortalama_debi_band_araligi"
 ) -> list[dict[str, Any]]:
@@ -538,6 +624,8 @@ def _seasonal_hourly_kmeans_for_param(
     start_date: str = "",
     end_date: str = "",
     max_scatter_points: int = 0,
+    min_pressure: float = 0.0,
+    max_pressure: float = 0.0,
 ) -> Any:
     full = _log_table_full(cur, nid)
     if not full:
@@ -629,6 +717,157 @@ def _seasonal_hourly_kmeans_for_param(
         for m in medoids_raw
     ]
     medoids_ranked.sort(key=lambda r: r["kume_no"])
+    # --- Tez yöntemi: debi küme merkezlerinden basınç set değerlerine ölçekleme ---
+    # Sadece DMA modu için anlamlı.
+    tez_basinc_ayarlama: dict[str, Any] | None = None
+    basinc_bandi_kaynak: str = "kullanici"  # kullanici | sensor_log | yok
+    basinc_sensor_aday_bilgi: dict[str, Any] | None = None
+    basinc_sensor_taranan_adaylar: list[dict[str, Any]] = []  # debug/transparency
+    user_band_given = (
+        float(min_pressure) > 0.0
+        and float(max_pressure) > float(min_pressure)
+    )
+    pressure_scaling_aktif = (mode == "dma" and user_band_given)
+    # DMA ise HER ZAMAN basınç sensörü ara (bilgi için); eğer kullanıcı band
+    # vermediyse bulunan sensörün min/max'ını kullan; vermişse yalnızca referans göster.
+    # DMA tag konvansiyonu: CikisBasincSensoru (çıkış), BasincSensoru (ana), BasincSensoru2 (hat sonu).
+    if mode == "dma":
+        # Birden fazla hint dene — aday havuzunu genişlet
+        # DMA ekran tipi başına tag konvansiyonu (nView skillerinden):
+        #   a-aqua-cnt-dma*      : GirisBasincSensoru, BasincSensoru (çıkış)
+        #   a-dma-p / a-dma-p-v3 : GirisBasinc, BasincSensoru (çıkış), HatBasinc, FarkBasinc, Pressure1..4
+        p_cands_all: list[dict[str, Any]] = []
+        _seen_ids: set[int] = set()
+        for hint in ("cikisbasinc", "basincsensoru", "girisbasinc", "girisbasincsensoru", "basinc"):
+            for c in resolve_log_params_by_hint(cur, nid, hint, limit=10):
+                cid = int(c.get("id") or 0)
+                if cid and cid not in _seen_ids:
+                    _seen_ids.add(cid)
+                    p_cands_all.append(c)
+        # Sıralama: DMA için öncelik — çıkış basıncı PRV seti için en uygunudur.
+        def _p_sort(c: dict[str, Any]) -> tuple[int, int, str]:
+            tp = (c.get("tagPath") or "").lower().replace(" ", "")
+            ds = (str(c.get("description") or "")).lower()
+            blob = f"{tp} {ds}"
+            prefer = 9
+            # 0: cikis basinc (DMA çıkış, PRV seti için en uygun)
+            if "cikisbasincsensoru" in blob or "cikis_basinc" in blob or "çıkışbasinc" in blob or "cikisbasinc" in blob:
+                prefer = 0
+            # 1: BasincSensoru — a-dma-p* ve a-aqua-cnt-dma* ailelerinde "çıkış basıncı" olarak kullanılır
+            elif "basincsensoru" in tp and "2" not in tp and "giris" not in tp and "hat" not in tp:
+                prefer = 1
+            # 2: generic basinc (GirisBasinc, HatBasinc, FarkBasinc vb. — fallback)
+            elif "girisbasinc" in blob:
+                prefer = 4  # giriş basıncı PRV için daha az tercih
+            elif "hatbasinc" in tp or "hat_basinc" in tp or "basincsensoru2" in tp:
+                prefer = 3
+            elif "farkbasinc" in tp or "fark_basinc" in tp:
+                prefer = 5  # fark basıncı — ölçekleme için uygun değil
+            elif "basinclink" in tp or "pressure" in tp:
+                prefer = 6  # set değerleri, ölçüm değil
+            elif "basinc" in blob:
+                prefer = 2
+            # _NoError / başında _ ile başlayan iç etiketleri geri it
+            if tp.startswith("_") or "noerror" in tp:
+                prefer += 10
+            return (prefer, -int(c.get("match_score") or 0), tp)
+        p_cands = sorted(p_cands_all, key=_p_sort)
+        basinc_sensor_taranan_adaylar = [
+            {
+                "id": int(c.get("id") or 0),
+                "tagPath": str(c.get("tagPath") or ""),
+                "match_score": int(c.get("match_score") or 0),
+            }
+            for c in p_cands[:8]
+        ]
+        for cand in p_cands:
+            p_pid = int(cand["id"])
+            p_tag = str(cand.get("tagPath") or "")
+            wh_p, pr_p = _log_where_parts(p_pid, None, d_from, d_to)
+            whs_p = "WHERE " + " AND ".join(wh_p)
+            p_bounds = fetch_log_value_bounds(
+                cur, f"SELECT tagValue FROM {full} {whs_p}", tuple(pr_p)
+            )
+            _apply_value_bounds_to_wh(wh_p, pr_p, p_bounds)
+            whs_p2 = "WHERE " + " AND ".join(wh_p)
+            cur.execute(
+                f"SELECT MIN(tagValue) AS mn, MAX(tagValue) AS mx, COUNT(*) AS c "
+                f"FROM {full} {whs_p2}",
+                tuple(pr_p),
+            )
+            r_p = cur.fetchone() or {}
+            mn_p = r_p.get("mn")
+            mx_p = r_p.get("mx")
+            cnt_p = int(r_p.get("c") or 0)
+            if (
+                mn_p is not None
+                and mx_p is not None
+                and cnt_p >= 50
+                and float(mx_p) > float(mn_p) + 0.05
+            ):
+                basinc_sensor_aday_bilgi = {
+                    "tagPath": p_tag,
+                    "logParamId": p_pid,
+                    "min_bar": round(float(mn_p), 4),
+                    "max_bar": round(float(mx_p), 4),
+                    "ornek_sayisi": cnt_p,
+                    "aciklama_tr": (
+                        f"Basınç sensörü {p_tag} aynı tarih aralığında "
+                        f"min={round(float(mn_p),2)} bar, max={round(float(mx_p),2)} bar "
+                        f"({cnt_p} ölçüm)."
+                    ),
+                }
+                # Kullanıcı band vermediyse bu otomatik band'ı kullan
+                if not user_band_given:
+                    min_pressure = float(mn_p)
+                    max_pressure = float(mx_p)
+                    pressure_scaling_aktif = True
+                    basinc_bandi_kaynak = "sensor_log"
+                # Kullanıcı band verdiyse scaling aktif zaten (kaynak = kullanici)
+                break
+        if not pressure_scaling_aktif:
+            # Ne kullanıcı band ne sensör → sadece K-Means, kullanıcıya sor
+            basinc_bandi_kaynak = "yok"
+    if pressure_scaling_aktif:
+        # Küme merkezlerini rank sırasına göre diz (kume_no 1..k), sonra mapminmax uygula.
+        centroids_by_rank: list[float] = [0.0] * len(centroids)
+        for raw_j, ctr in enumerate(centroids):
+            kn = int(rank_map.get(raw_j, raw_j + 1))
+            if 1 <= kn <= len(centroids_by_rank):
+                centroids_by_rank[kn - 1] = float(ctr)
+        pressures_by_rank = _map_minmax(
+            centroids_by_rank, float(min_pressure), float(max_pressure)
+        )
+        # kume_tablosu satırlarına basınç set kolonu ekle (kume_no hizalı)
+        for row in kume_tablosu:
+            kn = int(row.get("kume_no", 0))
+            if 1 <= kn <= len(pressures_by_rank):
+                row["basinc_set_bar"] = round(float(pressures_by_rank[kn - 1]), 4)
+        calisma_tablosu = _build_calisma_tablosu(medoids_ranked, pressures_by_rank)
+        kaynak_aciklama = {
+            "kullanici": "Basınç bandı kullanıcı tarafından parametre olarak verildi.",
+            "sensor_log": (
+                f"Basınç bandı node'un basınç sensörü logundan aynı tarih aralığında "
+                f"min/max değer olarak otomatik belirlendi "
+                f"(kaynak: {basinc_sensor_aday_bilgi.get('tagPath') if basinc_sensor_aday_bilgi else '?'})."
+            ),
+        }.get(basinc_bandi_kaynak, "")
+        tez_basinc_ayarlama = {
+            "min_bar": round(float(min_pressure), 4),
+            "max_bar": round(float(max_pressure), 4),
+            "kaynak": basinc_bandi_kaynak,  # kullanici | sensor_log
+            "otomatik_basinc_bandi": basinc_sensor_aday_bilgi,
+            "basinc_setleri_kume_no_sirali": [
+                round(float(p), 4) for p in pressures_by_rank
+            ],
+            "calisma_tablosu": calisma_tablosu,
+            "aciklama_tr": (
+                f"{kaynak_aciklama} Debi küme merkezleri {round(min_pressure,2)}-{round(max_pressure,2)} bar "
+                "bandına mapminmax ile doğrusal ölçeklendi (Fatih Kütük LR tezi, mapminmax(debi,a,b)). "
+                "calisma_tablosu: başlangıç saat:dk, bitiş saat:dk, dilim debisi ve "
+                "atanan basınç set değeri (PRV/pompa set çizelgesi için)."
+            ),
+        }
     # Tez stili scatter: her saat iki mevsim noktası; renk = küme (kümeleme vektörü use_vec'e göre)
     unit_y = "m³/h" if mode == "dma" else "m"
     scatter_points: list[dict[str, Any]] = []
@@ -915,10 +1154,74 @@ def _seasonal_hourly_kmeans_for_param(
                 f"Bu node’da tag yolunda «debi» geçen {debi_aday_sayisi} parametre var (ör. Debimetre / Debimetre2). "
                 "Hangi debimetrenin DMA için geçerli olduğunu kullanıcıdan doğrulayın veya logParamId ile sabitleyin."
             )
+        # Tez yöntemi basınç ölçekleme:
+        # 1) Kullanıcı band verdiyse veya sensör logundan otomatik tespit edildiyse → tez_basinc_ayarlama
+        # 2) Aksi halde (sensör yok/yetersiz) → kullanıcıya minPressure/maxPressure sor
+        if tez_basinc_ayarlama is not None:
+            out["tez_basinc_ayarlama"] = tez_basinc_ayarlama
+        else:
+            out["kullanici_basinc_bandi_sorusu_tr"] = {
+                "kaynak_deneme": basinc_bandi_kaynak,  # "yok"
+                "taranan_basinc_sensor_adaylari": basinc_sensor_taranan_adaylar,
+                "neden_tr": (
+                    "Bu node'da kullanılabilir bir basınç sensörü log parametresi bulunamadı "
+                    "veya aynı tarih aralığında yeterli/anlamlı (min<max) ölçüm yoktu; bu yüzden "
+                    "PRV basınç band'ı otomatik türetilemedi. "
+                    f"(Taranan aday tag sayısı: {len(basinc_sensor_taranan_adaylar)})"
+                ),
+                "sorulacak_kisa_tr": (
+                    "Basınç ölçekleme için minPressure ve maxPressure (bar) değerlerini "
+                    "belirtirseniz her zaman dilimine set basınç atayabilirim. "
+                    "Örnek: minPressure=3, maxPressure=5 — tez Tablo 3.3 formatında çalışma tablosu üretilir."
+                ),
+            }
+        # Debug / transparency: LLM sensörü neden seçti/bulamadı görebilsin
+        if basinc_sensor_taranan_adaylar:
+            out["basinc_sensor_tarama_tr"] = {
+                "taranan_adaylar": basinc_sensor_taranan_adaylar,
+                "secilen": basinc_sensor_aday_bilgi,
+                "not_tr": (
+                    "Basınç sensörü otomatik seçimi için taranan tagPath adaylarıdır; "
+                    "CikisBasincSensoru > BasincSensoru > BasincSensoru2 önceliklidir."
+                ),
+            }
+        # Kullanıcı doğrulama — kClusters (gün kaç bölgeye ayrıldı) ve parametre seçimi
+        out["kullanici_dogrulama_tr"] = {
+            "secili_parametre": {"logParamId": pid, "tagPath": tag_path},
+            "kume_sayisi": {"k_istenen": k, "k_uygulanan": k_uygulanan},
+            "basinc_bandi": (
+                {
+                    "min_bar": float(min_pressure),
+                    "max_bar": float(max_pressure),
+                    "aktif": True,
+                }
+                if tez_basinc_ayarlama is not None
+                else {"aktif": False}
+            ),
+            "sorulacak_kisa_tr": (
+                f"Bu analizde gün {k_uygulanan} bölgeye ayrıldı. İsterseniz farklı bir "
+                "bölge sayısı verebilirsiniz: `kClusters=6`, `kClusters=8`, `kClusters=12` "
+                "(izinli aralık 6-18). Ayrıca basınç bandı vermediyseniz `minPressure` ve "
+                "`maxPressure` (bar) ile her dilime set basınç atanır. Parametre seçimi "
+                "hatalıysa `logParamId` veya `tagHint` ile düzeltin."
+            ),
+        }
         out["model_talimat_tr"] = (
             "Önce dma_grafik_ve_dongu_model_talimat_tr ve dusunce_dongusu_kes_model_talimat_tr uygulayın (grafik isteğinde ek araç yok). "
             f"parametre.tagPath ile debi kanalını söyleyin. kmeans.kumelerin_kume_no_tablosu ({len(kume_tablosu)} satır) tam tablo. "
-            "birden_fazla_debi_uyarisi_tr varsa logParamId doğrulatın."
+            "birden_fazla_debi_uyarisi_tr varsa logParamId doğrulatın. "
+            "BASINÇ ÇİZELGESİ KURALI: "
+            "(a) `tez_basinc_ayarlama.calisma_tablosu` varsa TAMAMINI tezdeki Tablo 3.3 formatında verin "
+            "(Sütunlar: Zaman Dilimi, Başlangıç Saati, Bitiş Saati, Temsili Akış m³/h, Atanan Basınç bar). "
+            "`tez_basinc_ayarlama.kaynak` alanını cevapta belirtin: "
+            "'sensor_log' ise 'basınç bandı {min}-{max} bar node'un basınç sensöründen otomatik türetildi' deyin; "
+            "'kullanici' ise 'kullanıcı bandını kullandım' deyin. "
+            "(b) KENDİ uydurduğunuz '3-4 bar / 4-5 bar / 5-6 bar' gibi TAHMİNLER YAZMAYIN — basınç setleri araçta üretildi. "
+            "(c) Eğer çıktıda `kullanici_basinc_bandi_sorusu_tr` varsa (yani basınç sensörü bulunamadı): "
+            "TABLO UYDURMAYIN. Kullanıcıya kibarca 'bu node'da basınç sensör logu bulamadım; "
+            "minPressure/maxPressure (bar) değerlerini verirseniz çalışma tablosunu hesaplarım' deyin. "
+            "(d) Kullanıcı 'X-Y bar arasına ölçekle / farklı band' derse: aynı aracı minPressure=X, maxPressure=Y ile yeniden çağırın. "
+            "(e) BasincSensoru log grafiği bu istek için KULLANILMAZ — ölçekleme debi küme merkezlerine uygulanır."
         )
     else:
         out["seviye_bolgeleri_ozet_tr"] = ozet_tr
@@ -937,16 +1240,37 @@ def analyze_dma_seasonal_demand_impl(
     startDate: str = "",
     endDate: str = "",
     maxScatterPoints: int = 3500,
+    minPressure: float = 0.0,
+    maxPressure: float = 0.0,
 ) -> Any:
-    """Debimetre logunda saatlik ortalama; yaz/kış; K-Means; tez scatter (isteğe bağlı tarih aralığı)."""
+    """Debimetre logunda saatlik ortalama; yaz/kış; K-Means; tez scatter + PRV basınç çizelgesi.
+
+    Basınç band mantığı (tez Tablo 3.3 formatı):
+    1) Kullanıcı minPressure/maxPressure verdiyse o band kullanılır.
+    2) Vermediyse: node'un basınç sensör logundan (BasincSensoru vb.) aynı tarih aralığında
+       min/max değerleri otomatik çekilir ve bant olarak kullanılır (otomatik_basinc_bandi).
+    3) Sensör yoksa veya veri yetersizse: kullanici_basinc_bandi_sorusu_tr ile kullanıcıdan
+       min/max bar istenir; calisma_tablosu üretilmez.
+
+    Çıkan `tez_basinc_ayarlama.calisma_tablosu` her dilim için saat:dk başlangıç-bitiş,
+    temsili debi ve atanan basınç (bar) içerir.
+    """
     if not cfg.db:
         raise RuntimeError("DB config is missing for this instance.")
     k = min(max(int(kClusters), 3), 18)
+    # Default zaman aralığı: kullanıcı vermediyse son 30 gün
+    if not startDate and not endDate:
+        import datetime as _dt
+        _today = _dt.date.today()
+        startDate = (_today - _dt.timedelta(days=30)).isoformat()
+        endDate = _today.isoformat()
     empty_err = {
         "hata": "nodeId > 0 veya nodeAdiAra gerekli (ör. nodeAdiAra='Kale - 12').",
         "model_talimat_tr": (
             "Kullanıcı «debi bölgeleri», «K-Means», «tez gibi saatlik dilimler» derse bu aracı çağırın. "
-            "Son N ay için startDate/endDate verin; tez tarzı scatter: yanıttaki tez_scatter_chart (get_chart_data ile karıştırmayın). "
+            "kClusters VARSAYILAN 12'dir — kullanıcı açıkça 'N bölgeye böl' demedikçe 12 kullanın. "
+            "startDate/endDate verilmezse tool son 30 günü otomatik kullanır; daha uzun aralık gerekiyorsa açıkça verin. "
+            "tez tarzı scatter: yanıttaki tez_scatter_chart (get_chart_data ile karıştırmayın). "
             "Birden fazla debimetre: logParamId veya tagHint='Debimetre2'. Dinamik seviye: analyze_seasonal_level_profile."
         ),
     }
@@ -983,6 +1307,8 @@ def analyze_dma_seasonal_demand_impl(
                 start_date=startDate,
                 end_date=endDate,
                 max_scatter_points=max(0, int(maxScatterPoints)),
+                min_pressure=float(minPressure),
+                max_pressure=float(maxPressure),
             )
 
 

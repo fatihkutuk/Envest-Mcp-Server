@@ -1,0 +1,115 @@
+---
+name: nview-a-terfi-envestdalgic
+description: |
+  nView 'a-terfi-envestdalgic' için GENEL.phtml'den otomatik çıkarılmış tag/birim/etiket eşlemesi.
+  Use when: node.nView == "a-terfi-envestdalgic" ve tag anlamı, birim, rolü soruluyorsa.
+  Keywords: BasincSensoru, Debimetre, a-terfi-envestdalgic.
+version: "1.0.0"
+generated: true
+source: //10.10.10.72/public/dev.korubin/app/views/point/display/common/a-terfi-envestdalgic/GENEL.phtml
+---
+
+# nView: a-terfi-envestdalgic
+
+Aile bağlamı: **terfi.md (terfi istasyonu)** — ortak iş akışı için aile skiline bakın.
+
+## Ana Ekran Tag'leri (GENEL.phtml)
+
+| Tag ID | Anlam / Etiket | Birim | Fixed | Rol | Not |
+|---|---|---|---|---|---|
+| `BasincSensoru` | Çıkış basıncı | bar | 2 | measurement |  |
+| `BasincSensoru2` | Hat basıncı | bar | 2 | measurement |  |
+| `Debimetre` | Debi ölçümü (m³/h) | m³/h | 1 | measurement |  |
+| `An_Guc` | Anlık elektrik/motor ölçümü | kW | 2 | instant_electrical | langt=Sistem Güç; (col) |
+| `An_InvFrekans` | Anlık elektrik/motor ölçümü | Hz | 1 | instant_electrical | langt=Çıkış; (col) |
+| `An_L1Akim` | L1 | A | 1 | instant_electrical | Anlık elektrik/motor ölçümü; (col) |
+| `An_L1Voltaj` | L1 | V | 1 | instant_electrical | Anlık elektrik/motor ölçümü; (col) |
+| `An_L2Akim` | L2 | A | 1 | instant_electrical | Anlık elektrik/motor ölçümü; (col) |
+| `An_L2Voltaj` | L2 | V | 1 | instant_electrical | Anlık elektrik/motor ölçümü; (col) |
+| `An_L3Akim` | L3 | A | 1 | instant_electrical | Anlık elektrik/motor ölçümü; (col) |
+| `An_L3Voltaj` | L3 | V | 1 | instant_electrical | Anlık elektrik/motor ölçümü; (col) |
+| `An_SebFrekans` | Anlık elektrik/motor ölçümü | Hz | 1 | instant_electrical | langt=Giriş Fr.; (col) |
+| `T_CalismaSayac` | Toplam sayaç (su, elektrik, çalışma, şalt) | h |  | counter | langt=Çalışma Sayacı; (col) |
+| `T_ElektrikSayac` | Toplam sayaç (su, elektrik, çalışma, şalt) | kW/h |  | counter | langt=Elektrik Sayacı; (col) |
+| `T_PompSaltSayisi` | Toplam sayaç (su, elektrik, çalışma, şalt) | adet |  | counter | langt=Şalt Sayısı; (col) |
+| `T_SuSayac` | Toplam sayaç (su, elektrik, çalışma, şalt) | m³ |  | counter | langt=Su Sayacı; (col) |
+| `Bulaniklik` | Bulanıklık | NTU | 1 | measurement | Bulanıklık (NTU); (div) |
+| `CikisDepoSeviye` | Çıkış deposu seviyesi | m | 2 | measurement |  |
+| `DisOrtamSicaklik` | Dış ortam sıcaklığı | °C | 1 | measurement | langt=Dış Or.; (col) |
+| `DozajlamaMiktari` | Dozaj Mikt. | mL/h | 1 | unknown | (div) |
+| `eNetGuc` | [langt:P1 Güç] | kW | 2 | unknown | (col) |
+| `GirisBasincSensoru` |  | bar | 2 | unknown |  |
+| `GirisDepoSeviye` |  | m | 2 | unknown |  |
+| `hidrolikVerim` | [langt:Hidrolik Verim] | % | 2 | unknown | (div) |
+| `KlorBosMiktar` | Klor Boş | lt | 1 | unknown | (div) |
+| `KlorKapasite` | Klor Kap. | lt | 1 | unknown | (div) |
+| `KlorMiktar` | Klor Mikt. | lt | 1 | unknown | (div) |
+| `KlorSeviyeSensoru` | Klor Sev. | cm | 1 | unknown | (div) |
+| `m3Maliyet` | [langt:Birim Maliyet] | ₺/m³ | 2 | unknown | (div) |
+| `MotorSicaklik` | Motor sıcaklığı | °C | 1 | measurement | langt=Motor; (col) |
+| `PanoSicaklik` | Pano sıcaklığı | °C | 1 | measurement | langt=Pano; (col) |
+| `sistemVerim` | [langt:Sistem Verim] | % | 2 | unknown | (div) |
+| `storeAmount` |  | m³ | 2 | unknown |  |
+| `SuSicaklik` | Su sıcaklığı | °C | 1 | measurement | langt=Su; (col) |
+| `toplamHm` | Toplam basma yüksekliği (alias) | m | 2 | measurement | langt=Toplam hm; (div) |
+| `txt_CikisDepo` |  |  | 2 | unknown |  |
+| `xGunMaliyet` | [langt:Top. Maliyet] |  | 2 | unknown | (div) |
+| `XD_CikisDepoYukseklik` | Yapı/depo sabit boyut ayarı (yazma) | m | 2 | dimension_setting |  |
+| `XD_GirisDepoYukseklik` | Yapı/depo sabit boyut ayarı (yazma) | m | 2 | dimension_setting |  |
+
+## JavaScript `data.*` Referansları (dim dışı mod/alarm/sayaç)
+
+Aşağıdaki tag'ler GENEL.phtml JS bloğunda `data.X` olarak okunuyor ama görsel dim olarak çizilmiyor (mod seçim, alarm bayrağı, vb.):
+
+- **alarm**: `Al_DozajPompasiAriza`
+- **dimension_setting**: `XD_GirisDepoBoy`, `XD_GirisDepoEn`
+- **install_constant**: `XV_KabloKayip`, `XV_Nmotor`, `XV_Nsurtunme`, `XV_SurucuKayip`
+- **measurement**: `Pompa1StartStopDurumu`
+- **status**: `ACT_Durum`
+- **unknown**: `LocalMod`, `ScadaMod`, `ServisMod`, `Sulama_Basladi`
+
+## Alt Menü Sayfaları (MENU.phtml)
+
+Kullanıcı bir ayar/konfigürasyon sorduğunda (örn. "depo doldurma ayarları nereden"), aşağıdaki tablodan ilgili alt sayfayı ve içindeki ayar parametrelerini verin. `Başlık` sayfanın `<h1>`'inden, `Ayar Parametreleri` sayfada tanımlı `<f id="...">` kaydedilebilir alanlardan türetilir.
+
+| Sayfa (phtml) | Menü Etiketi | Sayfa Başlığı | Ayar Parametreleri |
+|---|---|---|---|
+| `tahsis` | [langt:allocation] | [langt:Tahsis Ayarları] | `SuTahsis`, `ElektrikTahsis` |
+| `maliyetdetay` | [langt:Maliyet Detay] | [langt:Maliyet Hesap Detayları] | — |
+| `pompaverim` | [langt:Pompa Verimi] | [langt:Pompa Verimi] | `XV_Nsurtunme`, `XV_Nmotor`, `XV_SurucuKayip`, `XV_KabloKayip` |
+| `calismamod` | [langt:Sabitleme] | [langt:Çalışma Ayarları] | `XC_SabitModBasinc`, `XC_SabitModDebi`, `XC_SabitModSeviye`, `XC_SabitModGuc`, `XC_SabitModFrekans` |
+| `sistem` | [langt:Sistem] | [langt:Sistem Ayarları] | `XS_StatikSevGuncSure`, `XD_BasmaYukseklik` |
+| `pid` | [langt:PID] | [langt:PID Ayarları] | `XC_BasincPIDKP`, `XC_BasincPIDKI`, `XC_BasincPIDKD`, `XC_BasincPIDKT`, `XC_DebiPIDKP`, `XC_DebiPIDKI`, `XC_DebiPIDKD`, `XC_DebiPIDKT` …+8 |
+| `sensor` | [langt:Sensör] | [langt:Sensör Ayarları] | `XS_GirisBasincMax`, `XS_GirisBasincKalibre`, `GirisBasincSensoru`, `XS_BasincSensoruMax`, `XS_BasincSensoruKalibre`, `BasincSensoru`, `XS_HatBasincMax`, `XS_HatBasincKalibre` …+20 |
+| `klor_sensor` | [langt:Klor Sensör] | [langt:Klor Sensör Ayarları] | `XS_KlorSeviyeMax`, `XS_KlorSeviyeKalibre`, `KlorSeviyeSensoru`, `XS_BulaniklikMax`, `XS_BulaniklikKalibre`, `Bulaniklik`, `XS_IletkenlikKalibre`, `IletkenlikDeger` …+6 |
+| `debimetre` | [langt:Debimetre] | [langt:Debimetre 1 Ayarları] | `XS_DebimetreMax`, `XS_DebimetreKalibre`, `Debimetre`, `XS_PulseDebiMiktar`, `XC_TerfiPompaSayi` |
+| `debimetre2` | [langt:Debimetre 2] | [langt:Debimetre 2 Ayarları] | `XS_Debimetre2Max`, `XS_Debimetre2Kalibre`, `Debimetre2`, `XS_PulseDebi2Miktar`, `GirisDepoGirisDebi`, `GirisDepoCikisDebi` |
+| `dozaj_ayar` | [langt:Dozaj Ayar] | [langt:Dozaj Pompası Ayarları] | `XS_1m3DozajMiktari`, `DozajlamaMiktari`, `XS_DozajPompRange`, `XS_SbtDozajMiktari`, `DozajlamaMiktari` |
+| `programtablo` | [langt:Prog.Çalışma] | [langt:Program Tablo] | — |
+| `emniyet` | [langt:Emniyet] | [langt:Emniyet Ayarları] | `XE_FrekansAlt`, `XE_FrekansUst`, `XE_FrekansSure`, `XE_VoltajAlt`, `XE_VoltajUst`, `XE_VoltajSure`, `XE_AkimAlt`, `XE_AkimUst` …+58 |
+| `emniyet_reset_ayar` | [langt:Emniyet Reset] | [langt:Emniyet Reset Ayarları] | `XE_OtoAlarmResetSayac`, `XE_OtoAlarmResetSet`, `XE_OtoAlarmResetBeklemeSn`, `XE_OtoAlarmSayacResetlemeSn` |
+| `maliyet` | [langt:Maliyet] | [langt:Maliyet Hesap Ayarları] | `XM_T1Fiyat`, `XM_T1GunlukSaat`, `XM_T1YillikGun`, `XM_T2Fiyat`, `XM_T2GunlukSaat`, `XM_T2YillikGun`, `XM_T3Fiyat`, `XM_T3GunlukSaat` …+1 |
+| `seviye_kontrol` | [langt:Şamandıra Ayar] | [langt:Şamandıra Kontrol] | `XC_SevKontStart`, `XC_SevKontStartBekleme`, `XC_SevKontStop`, `XC_SevKontStopBekleme` |
+| `depo_ayar` | [langt:Giriş Depo Ayr.] | [langt:Depo Ayarları] | `XD_GirisDepoYukseklik`, `XD_GirisDepoEn`, `XD_GirisDepoBoy`, `XC_SevKontStop`, `XC_SevKontStart` |
+| `depo` | [langt:Çıkış Depo Ayr.] | [langt:Çıkış Depo Ayarları] | `XD_CikisDepoEn`, `XD_CikisDepoBoy`, `XD_CikisDepoYukseklik`, `CikisDepoSeviye`, `XS_CikisDepoSeviyeMax`, `XS_CikisDepoSeviyeKalibre`, `CikisDepoSeviye` |
+| `depo2` | [langt:Çıkış Depo 2 Ayr.] | [langt:Çıkış Depo 2 Ayarları] | `XD_CikisDepoEn2`, `XD_CikisDepoBoy2`, `XD_CikisDepoYukseklik2`, `CikisDepoSeviye2`, `XS_CikisDepoSeviyeMax2`, `XS_CikisDepoSeviyeKalibre2`, `CikisDepoSeviye2` |
+| `depo_doldurma` | [langt:Depo Doldurma] | [langt:Depo Doldurma Ayarları] | `XD_CikisDepo1GunduzAlt`, `XD_CikisDepo1GunduzUst`, `XD_CikisDepo1PuantAlt`, `XD_CikisDepo1PuantUst`, `XD_CikisDepo1GeceAlt`, `XD_CikisDepo1GeceUst`, `XD_CikisDepo2GunduzAlt`, `XD_CikisDepo2GunduzUst` …+10 |
+| `hidrofor_mod_ayar` | [langt:Hid. Mod Ayr.] | [langt:Hidrofor Modu Ayarları] | `XHID_BasincCalisma`, `XHID_BasincDurma`, `XHID_ZamanCalisma`, `XHID_ZamanDurma`, `XHID_DebiMin`, `XHID_DebiKontrolSuresi`, `XHID_FrekansMin`, `XHID_FrekansKontrolSuresi` |
+| `haberlesme` | [langt:Haberleşme] | [langt:Sunucu Haberleşmesi Yokken Çalışma Ayarları] | `XH_HabYokCalisma`, `XH_HabYokDurma`, `XH_SunucuHabTimeOut`, `XH_Link1HabTimeOut` |
+| `surucu` | [langt:Sürücü] | [langt:Sürücü Ayarları] | `XINV_SoftMinLimit`, `XINV_SoftMaxLimit`, `XINV_HardMaxLimit` |
+| `analog1_ayar` | [langt:Analog 1 Ayar] | [langt:Analog 1 Ayarları] | — |
+| `analog2_ayar` | [langt:Analog 2 Ayar] | [langt:Analog 2 Ayarları] | — |
+| `act_ayar` | [langt:Act Ayar] | [langt:ACT Ayarları] | `ActAcmaSeviye`, `ActKapatmaSeviye`, `ACT_AcilmaZamani`, `ACT_KapanmaZamani`, `OransalVana1Pozisyon`, `OransalVana2Pozisyon`, `OransalVana3Pozisyon` |
+| `antiblokaj` | [langt:Antiblokaj] | [langt:Antiblokaj Mod] | `XC_AntiBlokajBekleme`, `XC_AntiBlokajCalisma`, `XC_AntiBlokajDevreyeGirmeSicaklik` |
+
+## Birim Özeti
+
+- **Basınç (bar)**: `BasincSensoru`, `BasincSensoru2`, `GirisBasincSensoru`
+- **Debi**: `Debimetre`
+- **Seviye / uzunluk (m/cm)**: `CikisDepoSeviye`, `GirisDepoSeviye`, `KlorSeviyeSensoru`, `XD_CikisDepoYukseklik`, `XD_GirisDepoYukseklik`, `toplamHm`
+
+## Not
+
+- Bu dosya `scripts/generate_nview_skills.py` ile otomatik üretildi. Elle düzenlemeyin; regenerate çağrısı üzerine yazar.
+- `langt:KEY` etiketleri çevirinin ham PHP key'idir; dil kaynağı erişilebildiğinde manuel eşleme yapılabilir.
+- Yaklaşık tag rolleri prefix/ isim kurallarıyla türetildi; kesin semantik için aile skiline ve tag-naming.md'ye bakın.
