@@ -6,7 +6,7 @@ description: |
   Keywords: a-aqua-mini-depo-v1.0.
 version: "1.0.0"
 generated: true
-source: //10.10.10.72/public/dev.korubin/app/views/point/display/common/a-aqua-mini-depo-v1.0/GENEL.phtml
+source: https://<panel_base_url>/panel/point/<node_id>/<menu>
 ---
 
 # nView: a-aqua-mini-depo-v1.0

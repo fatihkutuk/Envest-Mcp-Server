@@ -6,7 +6,7 @@ description: |
   Keywords: _a-multi.
 version: "1.0.0"
 generated: true
-source: //10.10.10.72/public/dev.korubin/app/views/point/display/common/_a-multi/GENEL.phtml
+source: https://<panel_base_url>/panel/point/<node_id>/<menu>
 ---
 
 # nView: _a-multi

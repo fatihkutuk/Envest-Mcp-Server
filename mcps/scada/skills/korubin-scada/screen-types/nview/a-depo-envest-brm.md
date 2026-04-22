@@ -6,7 +6,7 @@ description: |
   Keywords: Debimetre, a-depo-envest-brm.
 version: "1.0.0"
 generated: true
-source: //10.10.10.72/public/dev.korubin/app/views/point/display/common/a-depo-envest-brm/GENEL.phtml
+source: https://<panel_base_url>/panel/point/<node_id>/<menu>
 ---
 
 # nView: a-depo-envest-brm

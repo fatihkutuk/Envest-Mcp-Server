@@ -47,15 +47,24 @@ Her spesifik nView icin tek bir `.md` dosyasi — GENEL.phtml'den cikarilmis tag
 | **Diger** | `_a-multi` (270), `a-atik` (12), `a-hidro-p-v3` (11), `a-atik-cc120gm` (9), `a-aqua-cnt-lowpower` (8), `a-gozlem-m` (7), `a-sanal-d` (7), `a-aqua-cnt-bkv` (6), `a-gaz-hakkari` (4), `a-gaz-meha` (4), `a-sogutma-temsu-f4` (4), `a-tmaster` (3), `a-izleme-p` (3), `a-pompa-test` (3) |
 
 - **Ne zaman kullanilir:** Bir node'un `nView` alani bilindiginde o ekrana ozel tag semantigini (ornek: `a-dma-p-v3`'te `BasincSensoru = Cikis Basinci / bar`, `GirisBasinc = Giris Basinci / bar`) kesinlemek icin.
-- **Uretim:** `python scripts/generate_nview_skills.py --nview <name>` veya `--all` ile toplu yenileme. Kaynak: `//10.10.10.72/public/dev.korubin/app/views/point/display/common/<nView>/`
+- **Uretim:** `python scripts/generate_nview_skills.py --nview <name>` veya `--all` ile toplu yenileme. Kaynak: `https://<panel_base_url>/panel/point/<node_id>/<menu>`
 - **Bulma:** Skill loader `rglob("*.md")` kullandigi icin ayri manifest gerekmez.
 - **uisettings.phtml:** Bazi DMA/depo/BKV nView'larinda (`ui_girisbasinc`, `ui_cikisbasinc`, `ui_debimetre1/2` vb.) node konfigurasyonuna gore tag'ler aktif olur — skill icindeki "Arayuz Ayarlari" tablosundan kontrol edilir.
 
 ### Conventions (`conventions/`)
 | Dosya | Aciklama |
 |-------|----------|
-| [tag-naming.md](conventions/tag-naming.md) | Tag adlandirma kurallari ve onek anlami |
+| [tag-naming.md](conventions/tag-naming.md) | Tag adlandirma kurallari ve onek anlami (XE_, XS_, XD_, XC_, XA_, T_, An_) |
 | [alarm-codes.md](conventions/alarm-codes.md) | Alarm ve durum kodlari |
+| [panel-routing.md](conventions/panel-routing.md) | Panel URL yapisi, nView->sayfa eslestirmesi, fallback routing |
+
+### Analysis (`analysis/`) — Derin analiz ve is akislari
+| Dosya | Aciklama |
+|-------|----------|
+| [pump-verification.md](analysis/pump-verification.md) | Pompa secimi oncesi veri dogrulama, pompa calisiyor mu kontrolu, formulle cross-check |
+| [log-anomaly-detection.md](analysis/log-anomaly-detection.md) | Sensor arizasi, donmus deger, hat patlak tespiti, akilli SQL sorgulamasi |
+| [water-production.md](analysis/water-production.md) | Sayac endeks farkindan tarih araligindaki su uretimi/tuketimi hesabi |
+| [user-audit.md](analysis/user-audit.md) | log_tagyaz_user_log tablosundan kullanici degisiklik denetimi |
 
 ### Device Types (`device-types/`)
 | Dosya | Aciklama |
@@ -128,3 +137,18 @@ menusundeki ayar yerini soylemez.
 - **Debi-guc karsilastirma**: -> `compare_log_metrics`
 - **Seviye profili**: -> `analyze_seasonal_level_profile`
 - **Bir node'un ekran tagleri sorulunca** (ornek: "a-kuyu-envest'te toplamhm nedir"): once aile skili (kuyu.md), sonra `screen-types/nview/<nView>.md` detay tablosu.
+- **Pompa secimi / degisikligi sorusu**: -> `analysis/pump-verification.md` oku, sonra canli Hm ve Debi tag'lerini al, `korucaps_search_pumps` kullan. **np_ parametrelerini DEGIL canli tag'leri kullan!**
+- **Sensor arizasi / patlak / anormal deger sorusu**: -> `analysis/log-anomaly-detection.md` oku, sonra ilgili tool'lar (`get_node_log_data`, `analyze_log_trend`, `run_safe_query`)
+- **Su uretimi / tuketim sorusu** ("Mart ayinda kac m3 uretilmis"): -> `analysis/water-production.md` oku, sonra `T_` sayac tag'ini bul, endeks farki hesapla
+- **"Kim bu ayari degistirmis / neden sapti" sorusu**: -> `analysis/user-audit.md` oku, `run_safe_query` ile `log_tagyaz_user_log` tablosunu sorgula
+- **Panel URL / hangi sayfadan ayarlanir sorusu**: -> `conventions/panel-routing.md` oku. Iç dosya yolu DEGIL, `https://<panel_base_url>/panel/point/<nodeId>/<menu>` formatinda yonlendir.
+
+## KRITIK Kurallar
+
+1. **Debi birimi varsayilan m3/h'tir** - Tag adinda `LtSn`/`Ltsn` gecmedikce m3/h kabul et
+2. **Degerleri YUVARLAMA** - `Hm=131.45` aynen kullan, `131` degil
+3. **`np_*` parametreleri STATIK katalog degerleridir** - Gercek olcum icin canli tag (`Debimetre`, `ToplamHm`) oku
+4. **`X*` tag'leri AYAR'dir** - `XS_DebimetreMax` = sensor max ayari, gercek debi DEGIL
+5. **Pompa durumu kontrol et** - `Pompa1StartStopDurumu=0` iken Hm/Debi guvenilmez, loglardan calisma donemini bul
+6. **Formulle dogrula** - `P1 ≈ (Q × H) / 236` ile tutarsizliklari yakala
+7. **Panel URL kullan** - Iç IP/dosya yolu asla kullaniciya gosterme
