@@ -21,6 +21,12 @@ def create_mcp_server(cfg: InstanceConfig) -> FastMCP:
         f"If you get an error, try a different tool or parameters. "
         f"Node name (e.g. 'OLD', 'Golkent') is NOT a tool name; tools start with prefix (e.g. {cfg.tool_prefix}get_node). "
         f"If many tools exist, call smart_tool_select first to identify suitable tools for the query."
+        f"\n\nZORUNLU ILK ADIM: Eger {cfg.tool_prefix}list_skills tool'u varsa, "
+        f"once get_skill(skill_name='core-rules') cagir. "
+        f"Bu dosyada coklu instance arama, birim kurallari (debi m3/h), yuvarlama yasagi, "
+        f"tag semantigi (X*=AYAR, T_*=SAYAC, canli=olcum), pompa secimi akisi var. "
+        f"POMPA SECIMI: Hm icin ToplamHm (canli) oku, XD_BasmaYukseklik (AYAR) DEGIL. "
+        f"Kuyu->SP serisi, Terfi->CR serisi."
     )
 
     enable_instructions = (os.getenv("MCP_ENABLE_INSTRUCTIONS") or "").strip() in {"1", "true", "yes", "on"}

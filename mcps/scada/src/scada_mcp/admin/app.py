@@ -190,12 +190,26 @@ def _write_env(path: Path, values: dict[str, str]) -> None:
         "DB_PASSWORD",
         "KORUBIN_POINT_DISPLAY_ROOT",
     ]
+    # Legacy DB alias'larini .env'e yazma — config.py'deki _env_first
+    # bu alias'lara ONCE bakar ve yeni DB_USERNAME/DB_PASSWORD degerlerini
+    # override eder. Eski degerlerin kaymasini onlemek icin strip et.
+    legacy_db_aliases = {
+        "KORUBIN_DB_HOST", "KORUBIN_DB_PORT", "KORUBIN_DB_NAME", "KORUBIN_DB_DATABASE",
+        "KORUBIN_DB_USERNAME", "KORUBIN_DB_USER", "KORUBIN_DB_PASSWORD", "KORUBIN_DB_CHARSET",
+        "CORUM_DB_HOST", "CORUM_DB_PORT", "CORUM_DB_NAME",
+        "CORUM_DB_USERNAME", "CORUM_DB_PASSWORD",
+        "WINCAPS_DB_HOST", "WINCAPS_DB_PORT", "WINCAPS_DB_NAME",
+        "WINCAPS_DB_USER", "WINCAPS_DB_PASSWORD",
+        "DB_USER", "DB_DATABASE", "DB_CHARSET",
+        # Eski secret'lar da silinir — auto-generate ediliyor artik
+        "MCP_ADMIN_SECRET", "MCP_TOKEN_SECRET",
+    }
     lines: list[str] = []
     for k in keys:
         if k in values:
             lines.append(f"{k}={values[k]}")
     for k in sorted(values.keys()):
-        if k in keys:
+        if k in keys or k in legacy_db_aliases:
             continue
         lines.append(f"{k}={values[k]}")
     lines.append("")

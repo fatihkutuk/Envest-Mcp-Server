@@ -303,10 +303,25 @@ class ScadaNodesPack:
             lim = min(max(int(limit), 1), 100)
             out = _list_nodes_impl(nType, -999, kw, lim, 0, sort_by_name_len=True)
             if isinstance(out, dict) and "nodes" in out:
-                out["hint_tr"] = (
-                    "İlk satırlar genelde en kısa ve en iyi isim eşleşmesidir; birden fazla satır varsa "
-                    "nName ve urun_tipi ile seçin (kuyu: genelde «Koru1000 Well» / nView a-kuyu-envest)."
-                )
+                nodes_list = out.get("nodes") or []
+                if not nodes_list:
+                    # Bos sonuc: diger SCADA instance'larini dene uyarisi
+                    out["hint_tr"] = (
+                        f"'{kw}' icin bu SCADA'da ({prefix.rstrip('_')}) sonuc bulunamadi. "
+                        "MULTI-INSTANCE SETUP: Eger bu merged MCP'de birden fazla SCADA varsa "
+                        "(orn. corumscada_, envestbulutkorubin_), MUTLAKA diger prefix'lerde de AYNI ARAMA'yi tekrarla. "
+                        "Ornek: corumscada_find_nodes_by_keywords bos dondurduyse, hemen "
+                        "envestbulutkorubin_find_nodes_by_keywords('{kw}') cagir. "
+                        "Hepsi bos dondurduyse kullaniciya bildir, tahmin yurutme."
+                    )
+                    out["next_action_required"] = (
+                        "try_other_scada_instance_prefixes_before_asking_user"
+                    )
+                else:
+                    out["hint_tr"] = (
+                        "İlk satırlar genelde en kısa ve en iyi isim eşleşmesidir; birden fazla satır varsa "
+                        "nName ve urun_tipi ile seçin (kuyu: genelde «Koru1000 Well» / nView a-kuyu-envest)."
+                    )
                 # Her node için nView'a bağlı skill önerisi — ayar/menü/çalışma modu soruları için
                 for n in out.get("nodes", []):
                     nv = str(n.get("nView") or "")
@@ -385,6 +400,26 @@ class ScadaNodesPack:
                     "emniyet -> XE_*, sensor -> XS_* vb.). 'Arayüz Ayarları' tablosu ui_* bayraklarıyla "
                     "hangi tag'in aktif olduğunu gösterir."
                 )
+
+            # Pompa secimi icin KRITIK uyari — nView'a gore pompa ailesi + canli tag zorunlulugu
+            nv_l = nv.lower()
+            nname_l = str(node.get("nName") or "").lower()
+            is_well = ("kuyu" in nv_l) or ("kuyu" in nname_l) or ("well" in nv_l)
+            is_booster = ("terfi" in nv_l) or ("terfi" in nname_l) or ("booster" in nv_l) or ("hidro" in nv_l)
+            if is_well or is_booster or "depo" in nv_l or "dma" in nv_l:
+                node["pompa_secimi_kisa_yol_tr"] = (
+                    f"POMPA SECIMI ICIN TEK CAGRI YETER: "
+                    f"{prefix}prepare_pump_selection(nodeId={node.get('id')}). "
+                    "Bu tool canli tag'leri okur (ToplamHm merkez), formulle dogrular "
+                    "(P_hid = Q×H/367), hazir Q/H dondurur. Sonra next_action'i aynen cagir. "
+                    "get_device_tag_values / get_node_all_tags ile manuel uğrasma."
+                )
+                node["pompa_secimi_yasak_tr"] = (
+                    "BasincSensoru × 10.197 ile HM TURETME — bu hat basinci, kuyu derinligi "
+                    "+ surtunme iceremez. ToplamHm tag'ini DOGRUDAN oku. "
+                    "XD_BasmaYukseklik (ayar), np_PompaHm (katalog), XS_DebimetreMax (sensor tavani) "
+                    "YASAK — hicbiri canli olcum degildir."
+                )
             return node
 
         @mcp.tool(name=tool)
@@ -395,6 +430,331 @@ class ScadaNodesPack:
             bu ekran tipinin alt menüleri, ayar parametreleri, hangi tag nerede gibi tam referans var.
             Bu, search_product_manual / get_product_specs YERİNE kullanılır (onlar cihaz kataloğu)."""
             return guard(tool, _get_node_impl)(nodeId)
+
+        # --- prepare_pump_selection ---
+        # Pompa secimi icin TEK ADIMDA hersey: canli tag, formulle dogrulama, hazir Q/H.
+        tool = prefixed_name(prefix, "prepare_pump_selection")
+
+        def _prepare_pump_selection_impl(nodeId: int) -> Any:
+            if not cfg.db:
+                raise RuntimeError("DB config is missing for this instance.")
+            nid = int(nodeId)
+
+            # Kritik canli tag'ler — ToplamHm MERKEZDE
+            pump_tags = [
+                "ToplamHm",            # canli basma yuksekligi (metre) — EN KRITIK
+                "Debimetre", "Debimetre1", "Debimetre2",
+                "DebimetreLtSn",
+                "BasincSensoru", "BasincSensoru2", "HatBasincSensoru",
+                "Pompa1StartStopDurumu", "Pompa2StartStopDurumu",
+                "PompaStartStopDurumu", "PompaCalismaDurumu", "Pompa1Calisiyor",
+                "P1_Durum", "P2_Durum",
+                "An_Guc", "P1_Guc",
+                "YaklasikHidrolikVerim", "HidrolikVerim", "PompaVerim",
+                "SuSeviye", "StatikSuSeviye",
+                # VFD / surucu tespiti icin frekans tag'leri
+                "An_SebFrekans", "P1_Frekans", "Pompa1Frekans",
+                "PompaFrekans", "Frekans", "An_Frekans",
+                "SurucuVar", "SurucuAktif",
+            ]
+
+            with dbmod.connect(cfg.db) as conn:
+                with conn.cursor() as cur:
+                    # Node
+                    cur.execute(
+                        "SELECT id, nName, nView, nType, nState FROM node WHERE id = %s",
+                        (nid,),
+                    )
+                    node = cur.fetchone()
+                    if not node:
+                        return {"error": f"Node {nid} bulunamadi"}
+                    # Canli tag'ler
+                    placeholders = ",".join(["%s"] * len(pump_tags))
+                    cur.execute(
+                        f"SELECT tagName, tagValue, readTime FROM _tagoku "
+                        f"WHERE devId = %s AND tagName IN ({placeholders})",
+                        tuple([nid] + pump_tags),
+                    )
+                    tag_rows = {r["tagName"]: r for r in cur.fetchall()}
+
+            def _num(name: str) -> float | None:
+                r = tag_rows.get(name)
+                if not r:
+                    return None
+                try:
+                    return float(r["tagValue"])
+                except (TypeError, ValueError):
+                    return None
+
+            # Pompa tipi / seri
+            nv_l = str(node.get("nView") or "").lower()
+            nname_l = str(node.get("nName") or "").lower()
+            is_well = ("kuyu" in nv_l) or ("kuyu" in nname_l) or ("well" in nv_l)
+            is_booster = (
+                "terfi" in nv_l or "terfi" in nname_l
+                or "booster" in nv_l or "hidro" in nv_l
+            )
+            if is_well:
+                kc_app = "groundwater"
+                kc_sub = "WELLINS"
+                pump_series = "SP"
+                pump_type_tr = "kuyu (dalgic)"
+            elif is_booster:
+                kc_app = "booster"
+                kc_sub = "BOOSPUMP"
+                pump_series = "CR"
+                pump_type_tr = "terfi/booster"
+            else:
+                kc_app = None
+                kc_sub = None
+                pump_series = None
+                pump_type_tr = "belirsiz"
+
+            # Pompa calisiyor mu?
+            running_flags = [
+                _num("Pompa1StartStopDurumu"),
+                _num("PompaStartStopDurumu"),
+                _num("PompaCalismaDurumu"),
+                _num("Pompa1Calisiyor"),
+                _num("P1_Durum"),
+            ]
+            running = any((v is not None and v > 0.5) for v in running_flags)
+
+            # Canli degerler — ToplamHm MERKEZ
+            head_m = _num("ToplamHm")
+            flow = _num("Debimetre") or _num("Debimetre1")
+            flow_ltsn = _num("DebimetreLtSn")
+            if flow is None and flow_ltsn is not None:
+                flow = flow_ltsn * 3.6  # Lt/sn -> m3/h
+            power_kw = _num("An_Guc") or _num("P1_Guc")
+            eta_hyd = _num("YaklasikHidrolikVerim") or _num("HidrolikVerim") or _num("PompaVerim")
+
+            # VFD / surucu tespiti — frekans tag'i varsa ve 50 Hz disindaysa VFD aktif
+            freq_candidates = [
+                ("An_SebFrekans", _num("An_SebFrekans")),
+                ("P1_Frekans", _num("P1_Frekans")),
+                ("Pompa1Frekans", _num("Pompa1Frekans")),
+                ("PompaFrekans", _num("PompaFrekans")),
+                ("Frekans", _num("Frekans")),
+                ("An_Frekans", _num("An_Frekans")),
+            ]
+            freq_tags_present = [name for name, v in freq_candidates if v is not None]
+            freq_val = next((v for _, v in freq_candidates if v is not None), None)
+            surucu_flag = _num("SurucuVar") or _num("SurucuAktif")
+            # Heuristik: An_SebFrekans "sebeke" frekansidir (genelde 50Hz sabit) —
+            # tek basina VFD gostermez. Pompa-ozgu frekans (P1_Frekans, PompaFrekans)
+            # 50'den farkliysa VFD aktif demektir.
+            pump_freq = (
+                _num("P1_Frekans") or _num("Pompa1Frekans")
+                or _num("PompaFrekans") or _num("Frekans")
+            )
+            if surucu_flag is not None:
+                vfd_detected: bool | None = bool(surucu_flag > 0.5)
+                vfd_source = "SurucuVar/SurucuAktif tag'i"
+            elif pump_freq is not None:
+                vfd_detected = True  # pompa frekans tag'i varsa surucu vardir
+                vfd_source = f"pompa frekans tag'i ({pump_freq} Hz) mevcut"
+            else:
+                vfd_detected = None  # belirsiz
+                vfd_source = (
+                    "Sistemde frekans veya surucu tag'i bulunamadi — "
+                    "VFD varligi tag'lardan kesinlenemedi. "
+                    "Kullaniciya saha durumu teyit ettirilmeli."
+                )
+
+            # Formulle cross-check: P_hid = (Q × H) / 367 (m3/h, m, kW icin)
+            checks: list[dict[str, Any]] = []
+            p_hyd_calc = None
+            p1_expected = None
+            if flow and head_m:
+                p_hyd_calc = round((flow * head_m) / 367.0, 2)
+                if eta_hyd:
+                    # eta yuzde mi ondalik mi kestir
+                    eta = eta_hyd / 100.0 if eta_hyd > 1.5 else eta_hyd
+                    if eta > 0.05:
+                        p1_expected = round(p_hyd_calc / eta, 2)
+                if power_kw is not None and p_hyd_calc is not None:
+                    ratio = power_kw / max(p_hyd_calc, 0.01)
+                    # Hidrolik_guc > shaft_guc ise mantiksiz
+                    if power_kw < p_hyd_calc * 0.9:
+                        checks.append({
+                            "severity": "HIGH",
+                            "issue": "olcum_tutarsiz",
+                            "detail": (
+                                f"An_Guc ({power_kw} kW) < hidrolik guc ({p_hyd_calc} kW). "
+                                "Fiziksel mumkun degil — ya flow/head yanlis ya power olcumu yanlis. "
+                                "Flow/Head degerlerini TEKRAR OKU."
+                            ),
+                        })
+                    elif ratio > 3.0:
+                        checks.append({
+                            "severity": "MEDIUM",
+                            "issue": "asiri_guc",
+                            "detail": (
+                                f"An_Guc/P_hid orani {ratio:.1f}x — verim %33'un altinda görünüyor. "
+                                "Verim sensor kontrol et veya baska nokta secimi yanlis olabilir."
+                            ),
+                        })
+                if p1_expected is not None and power_kw is not None:
+                    diff = abs(power_kw - p1_expected) / max(p1_expected, 0.01)
+                    if diff > 0.4:
+                        checks.append({
+                            "severity": "HIGH",
+                            "issue": "verim_hesabi_tutarsiz",
+                            "detail": (
+                                f"Hesaplanan P1 ({p1_expected} kW) ile canli An_Guc ({power_kw} kW) "
+                                f"arasi fark >%40. Ya flow/head yanlis ya verim tag'i yanlis. "
+                                f"Sıra: ToplamHm, Debimetre, An_Guc, YaklasikHidrolikVerim'i kontrol et."
+                            ),
+                        })
+
+            if not running:
+                checks.append({
+                    "severity": "HIGH",
+                    "issue": "pompa_durmus",
+                    "detail": (
+                        "Pompa calismiyor — canli Hm ve Debi GUVENILMEZ. "
+                        "get_node_log_data ile son calistigi donemi bulup o tarihten ortalama al."
+                    ),
+                })
+            if head_m is None:
+                checks.append({
+                    "severity": "HIGH",
+                    "issue": "toplam_hm_yok",
+                    "detail": (
+                        "ToplamHm tag'i bulunamadi. Bu tag pompa basma yuksekligi icin merkez deger. "
+                        "DIKKAT: BasincSensoru × 10.197 ile HM TURETME — bu sadece hat basinci, "
+                        "kuyu su seviyesi ve surtunme kayipi iceremez. get_device_data ile tag listesini "
+                        "gor, Hm/TotalHead benzeri farklı isim var mi bak."
+                    ),
+                })
+
+            if vfd_detected is True:
+                impeller_kural_tr = (
+                    "Sistemde SURUCU/VFD VAR → TAM CAPLI (standart) pompa tercih et. "
+                    "Tirasli fanli (isim sonunda N ornegin 'SP 125-8-AAN') pompadan kacin. "
+                    "Surucu frekans dusurerek debiyi ayarlayabilir, tirasliya gerek yok. "
+                    "Istisna: Surucu ile istenen noktaya ulasilamiyorsa tirasliya donulur."
+                )
+                korucaps_prefer_impeller = "full"
+            elif vfd_detected is False:
+                impeller_kural_tr = (
+                    "Sistemde SURUCU/VFD YOK → Hem tam capli hem tirasli fanli pompa uygun. "
+                    "Hangi seri calisma noktasina daha iyi oturuyorsa o secilir. "
+                    "Tirasli fan (N ile biten, orn 'SP 125-8-AAN') daha esnek H ayarina izin verir."
+                )
+                korucaps_prefer_impeller = "any"
+            else:
+                impeller_kural_tr = (
+                    "VFD varligi BELIRSIZ — tag'lardan tespit edilemedi. "
+                    "Hem tam capli hem tirasli fanli sonuclari kullaniciya sun, "
+                    "farkini anlat (tirasli = impelleri kuculup H/Q ayari, tam capli = standart). "
+                    "Kullaniciya 'sahada sürücü var mi?' diye sor."
+                )
+                korucaps_prefer_impeller = "any"
+
+            result: dict[str, Any] = {
+                "node_id": nid,
+                "node_name": node.get("nName"),
+                "nView": node.get("nView"),
+                "pump_type": pump_type_tr,
+                "running": running,
+                "canli_olcumler": {
+                    "ToplamHm_m": head_m,
+                    "Debimetre_m3h": flow,
+                    "An_Guc_kW": power_kw,
+                    "YaklasikHidrolikVerim": eta_hyd,
+                    "BasincSensoru_bar": _num("BasincSensoru"),
+                    "HatBasincSensoru_bar": _num("HatBasincSensoru"),
+                    "pompa_frekans_Hz": pump_freq,
+                    "sebeke_frekans_Hz": _num("An_SebFrekans"),
+                },
+                "hesaplamalar": {
+                    "P_hidrolik_hesap_kW": p_hyd_calc,
+                    "P1_beklenen_kW": p1_expected,
+                    "formul": "P_hid = (Q × H) / 367, P1 = P_hid / η",
+                },
+                "vfd": {
+                    "mevcut": vfd_detected,  # true / false / null (belirsiz)
+                    "tespit_kaynagi": vfd_source,
+                    "frekans_tag_listesi": freq_tags_present,
+                    "impeller_kurali_tr": impeller_kural_tr,
+                },
+                "korucaps_parametreleri": (
+                    {
+                        "flow_m3h": flow,
+                        "head_m": head_m,
+                        "application": kc_app,
+                        "sub_application": kc_sub,
+                        "pump_series_hint": pump_series,
+                        "vfd": bool(vfd_detected is True),
+                        "prefer_impeller": korucaps_prefer_impeller,
+                    } if (flow and head_m and not checks) else None
+                ),
+                "checks": checks,
+                "hazir": bool(flow and head_m and running and not any(c["severity"] == "HIGH" for c in checks)),
+            }
+
+            if result["hazir"]:
+                vfd_param = "true" if vfd_detected is True else "false"
+                result["next_action"] = (
+                    f"korucaps_search_pumps(flow_m3h={flow}, head_m={head_m}, "
+                    f"application='{kc_app}', sub_application='{kc_sub}', vfd={vfd_param})"
+                )
+                impeller_uyari = ""
+                if vfd_detected is True:
+                    impeller_uyari = (
+                        " SUNARKEN: Sistemde VFD VAR — TAM CAPLI (isim sonunda N olmayan) "
+                        "pompalari on-plana cikar, tirasli (N ile biten) alternatifleri "
+                        "'surucu yoksa secenek' olarak ikinci sirada goster."
+                    )
+                elif vfd_detected is False:
+                    impeller_uyari = (
+                        " SUNARKEN: Sistemde VFD YOK — tam capli ve tirasli (N) seceneklerin"
+                        " ikisini de sun, farkini kisaca anlat (tirasli = kuculmus impeller,"
+                        " daha esnek H/Q ayari)."
+                    )
+                else:
+                    impeller_uyari = (
+                        " SUNARKEN: VFD varligi BELIRSIZ — kullaniciya 'sahada surucu var mi?'"
+                        " diye sor. Cevaba gore tam capli veya tirasli (N) secenegi oner."
+                    )
+                result["hint_tr"] = (
+                    "Veriler tutarli. Yukaridaki next_action komutunu AYNEN calistir. "
+                    "Degerleri YUVARLAMA, hesaplari TEKRAR yapma." + impeller_uyari
+                )
+            else:
+                highs = [c for c in checks if c["severity"] == "HIGH"]
+                if highs:
+                    result["next_action"] = "stop_and_resolve_checks"
+                    result["hint_tr"] = (
+                        "DURUM KRITIK — checks listesinde HIGH severity sorunlar var. "
+                        "korucaps_search_pumps CAGIRMA. Once sorunlari kullaniciya bildir veya "
+                        "eksik tag'leri tamamla. Ozellikle ToplamHm bulunamadiysa, "
+                        "BasincSensoru'ndan HM TURETME."
+                    )
+                else:
+                    result["hint_tr"] = (
+                        "Uyarilar var ama kritik degil. Yine de kullaniciya teyit ederek ilerle."
+                    )
+            return result
+
+        @mcp.tool(name=tool)
+        def prepare_pump_selection(nodeId: int) -> str:
+            """Pompa secimi icin TEK ADIMDA hersey: canli tag okuma + formulle dogrulama + hazir Q/H.
+
+            KULLANIM: Kullanici bir node icin pompa secimi istediginde:
+            1) find_node_everywhere ile node'u bul
+            2) <prefix>_prepare_pump_selection(nodeId) -> CANLI Hm, Debi, guc, verim + tutarlilik check
+            3) Response'ta 'hazir=true' ve 'next_action' varsa O KOMUTU AYNEN cagir
+            4) 'checks' icinde HIGH varsa DURDURUK kullaniciya bildir
+
+            ToplamHm bulamazsa BasincSensoru'ndan HM TURETME — cunki bu sadece hat basinci,
+            kuyu derinligi + surtunme icermez. Yanlis H -> yanlis pompa.
+
+            Formulle dogrular: P_hid = (Q × H) / 367, P1 = P_hid / η. An_Guc ile tutarsiz ise alarm.
+            """
+            return guard(tool, _prepare_pump_selection_impl)(nodeId)
 
         # --- list_product_types ---
         tool = prefixed_name(prefix, "list_product_types")

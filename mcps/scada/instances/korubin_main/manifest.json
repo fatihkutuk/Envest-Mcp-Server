@@ -11,13 +11,28 @@
         "envestbulutkorubin_get_korubin_ui_and_tool_routing_tr",
         "envestbulutkorubin_get_scada_site_routing_hints",
         "envestbulutkorubin_get_scada_mcp_manifest",
-        "envestbulutkorubin_get_scada_tag_naming_defaults_tr"
+        "envestbulutkorubin_get_scada_tag_naming_defaults_tr",
+        "envestbulutkorubin_smart_tool_select"
       ]
     },
     {
       "id": "nodes",
       "title_tr": "Node / nokta sayımı",
       "tools": []
+    },
+    {
+      "id": "nodes",
+      "title_tr": "Node / topo",
+      "tools": [
+        "envestbulutkorubin_get_node_counts",
+        "envestbulutkorubin_list_nodes",
+        "envestbulutkorubin_find_nodes_by_keywords",
+        "envestbulutkorubin_get_node",
+        "envestbulutkorubin_list_product_types",
+        "envestbulutkorubin_get_node_scada_context",
+        "envestbulutkorubin_get_node_panel_settings_guide",
+        "envestbulutkorubin_get_operational_engineering_hints"
+      ]
     },
     {
       "id": "scada_live",
@@ -38,14 +53,14 @@
       ]
     },
     {
-      "id": "nodes",
-      "title_tr": "Node / topo",
+      "id": "semantics",
+      "title_tr": "Panel semantik",
       "tools": [
-        "envestbulutkorubin_get_node_counts",
-        "envestbulutkorubin_list_nodes",
-        "envestbulutkorubin_find_nodes_by_keywords",
-        "envestbulutkorubin_get_node",
-        "envestbulutkorubin_list_product_types"
+        "envestbulutkorubin_get_nview_equipment_profile",
+        "envestbulutkorubin_get_scada_semantics",
+        "envestbulutkorubin_get_view_tag_meanings",
+        "envestbulutkorubin_get_counter_semantics",
+        "envestbulutkorubin_resolve_semantic_tag_candidates"
       ]
     },
     {
@@ -70,14 +85,6 @@
       "id": "semantics",
       "title_tr": "Panel semantik / şablon",
       "tools": [
-        "envestbulutkorubin_get_nview_equipment_profile",
-        "envestbulutkorubin_get_scada_semantics",
-        "envestbulutkorubin_get_view_tag_meanings",
-        "envestbulutkorubin_get_counter_semantics",
-        "envestbulutkorubin_resolve_semantic_tag_candidates",
-        "envestbulutkorubin_get_node_scada_context",
-        "envestbulutkorubin_get_node_panel_settings_guide",
-        "envestbulutkorubin_get_operational_engineering_hints",
         "envestbulutkorubin_list_point_display_templates",
         "envestbulutkorubin_read_point_display_template",
         "envestbulutkorubin_list_point_display_files",
@@ -88,13 +95,70 @@
       ]
     },
     {
+      "id": "alarms_stats",
+      "title_tr": "Alarm istatistikleri",
+      "tools": [
+        "envestbulutkorubin_get_alarm_statistics"
+      ]
+    },
+    {
+      "id": "kepware_more",
+      "title_tr": "Kepware cihaz / sürücü",
+      "tools": [
+        "envestbulutkorubin_list_channel_devices",
+        "envestbulutkorubin_get_channel_device_detail",
+        "envestbulutkorubin_get_device_connection_params",
+        "envestbulutkorubin_list_channel_types",
+        "envestbulutkorubin_list_device_types",
+        "envestbulutkorubin_get_device_type_tags",
+        "envestbulutkorubin_get_device_individual_tags",
+        "envestbulutkorubin_list_device_status_codes",
+        "envestbulutkorubin_list_drivers",
+        "envestbulutkorubin_get_driver_detail",
+        "envestbulutkorubin_list_service_instances",
+        "envestbulutkorubin_get_service_activities",
+        "envestbulutkorubin_get_device_all_tags",
+        "envestbulutkorubin_get_node_all_tags",
+        "envestbulutkorubin_get_tag_address"
+      ]
+    },
+    {
+      "id": "charts",
+      "title_tr": "Grafik (log)",
+      "tools": [
+        "envestbulutkorubin_get_chart_data",
+        "envestbulutkorubin_get_multi_chart_data",
+        "envestbulutkorubin_get_node_log_chart_data",
+        "envestbulutkorubin_get_recent_log_chart_by_tag"
+      ]
+    },
+    {
+      "id": "node_logs",
+      "title_tr": "Node log tabloları",
+      "tools": [
+        "envestbulutkorubin_get_node_log_data",
+        "envestbulutkorubin_get_node_log_summary",
+        "envestbulutkorubin_get_node_log_latest_values"
+      ]
+    },
+    {
+      "id": "products",
+      "title_tr": "Ürün kılavuzu (JSON)",
+      "tools": [
+        "envestbulutkorubin_search_product_manual",
+        "envestbulutkorubin_get_product_specs",
+        "envestbulutkorubin_get_product_settings",
+        "envestbulutkorubin_get_product_troubleshoot",
+        "envestbulutkorubin_get_product_sensor_info"
+      ]
+    },
+    {
       "id": "dashboard",
       "title_tr": "Dashboard / özet",
       "tools": [
         "envestbulutkorubin_get_scada_summary",
         "envestbulutkorubin_get_node_distribution",
-        "envestbulutkorubin_get_channel_device_statistics",
-        "envestbulutkorubin_get_alarm_statistics"
+        "envestbulutkorubin_get_channel_device_statistics"
       ]
     },
     {
@@ -134,59 +198,12 @@
       ]
     },
     {
-      "id": "kepware_more",
-      "title_tr": "Kepware cihaz / sürücü",
+      "id": "dma",
+      "title_tr": "DMA / mevsimsel analiz",
       "tools": [
-        "envestbulutkorubin_list_channel_devices",
-        "envestbulutkorubin_get_channel_device_detail",
-        "envestbulutkorubin_get_device_connection_params",
-        "envestbulutkorubin_list_channel_types",
-        "envestbulutkorubin_list_device_types",
-        "envestbulutkorubin_get_device_type_tags",
-        "envestbulutkorubin_get_device_individual_tags",
-        "envestbulutkorubin_list_device_status_codes",
-        "envestbulutkorubin_list_drivers",
-        "envestbulutkorubin_get_driver_detail",
-        "envestbulutkorubin_list_service_instances",
-        "envestbulutkorubin_get_service_activities",
-        "envestbulutkorubin_get_device_all_tags",
-        "envestbulutkorubin_get_node_all_tags",
-        "envestbulutkorubin_get_tag_address"
-      ]
-    },
-    {
-      "id": "charts",
-      "title_tr": "Grafik (log)",
-      "tools": [
-        "envestbulutkorubin_get_chart_data",
-        "envestbulutkorubin_get_multi_chart_data",
-        "envestbulutkorubin_compare_log_metrics",
-        "envestbulutkorubin_get_node_log_chart_data",
-        "envestbulutkorubin_get_recent_log_chart_by_tag",
-        "envestbulutkorubin_analyze_log_trend",
         "envestbulutkorubin_list_dma_station_nodes",
         "envestbulutkorubin_analyze_dma_seasonal_demand",
         "envestbulutkorubin_analyze_seasonal_level_profile"
-      ]
-    },
-    {
-      "id": "node_logs",
-      "title_tr": "Node log tabloları",
-      "tools": [
-        "envestbulutkorubin_get_node_log_data",
-        "envestbulutkorubin_get_node_log_summary",
-        "envestbulutkorubin_get_node_log_latest_values"
-      ]
-    },
-    {
-      "id": "products",
-      "title_tr": "Ürün kılavuzu (JSON)",
-      "tools": [
-        "envestbulutkorubin_search_product_manual",
-        "envestbulutkorubin_get_product_specs",
-        "envestbulutkorubin_get_product_settings",
-        "envestbulutkorubin_get_product_troubleshoot",
-        "envestbulutkorubin_get_product_sensor_info"
       ]
     },
     {
@@ -197,12 +214,15 @@
         "envestbulutkorubin_generate_scada_report",
         "envestbulutkorubin_generate_node_report",
         "envestbulutkorubin_export_custom_data",
-        "envestbulutkorubin_export_active_alarms",
-        "envestbulutkorubin_get_pump_catalog_for_node",
-        "envestbulutkorubin_get_well_hydraulic_profile",
-        "envestbulutkorubin_analyze_pump_performance",
-        "envestbulutkorubin_search_pump_alternatives",
-        "envestbulutkorubin_calculate_hydraulic_metrics"
+        "envestbulutkorubin_export_active_alarms"
+      ]
+    },
+    {
+      "id": "analytics",
+      "title_tr": "Trend / karşılaştırma analizi",
+      "tools": [
+        "envestbulutkorubin_compare_log_metrics",
+        "envestbulutkorubin_analyze_log_trend"
       ]
     },
     {

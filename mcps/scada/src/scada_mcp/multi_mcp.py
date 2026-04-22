@@ -341,25 +341,37 @@ class MultiMcpDispatchASGI:
             "If unclear, ask which system they mean before calling a tool. "
             "NEVER mix prefixes in a single query for the SAME logical operation — "
             "but see the CROSS-INSTANCE SEARCH rule below for node lookup."
-            "\n\n=== CROSS-INSTANCE NODE SEARCH (ZORUNLU) ==="
+            "\n\n=== NODE ARAMA (TEK TOOL — find_node_everywhere) ==="
             "\nKullanici bir node adi sordugunda (orn. 'selafur kuyu 4', 'akkent terfi'):"
-            "\n1. HANGI SCADA oldugu belirtilmediyse → TUM SCADA prefix'lerinde ara"
-            "\n   Ornek: Hem corumscada_find_nodes_by_keywords hem envestbulutkorubin_find_nodes_by_keywords cagir"
-            "\n2. BIRINDE bulunduysa → o instance'ta devam et (prefix tutarliligi)"
-            "\n3. HICBIRINDE bulunamadiysa → kullaniciya bildir, TAHMIN YURUTME"
-            "\n4. BIRDEN FAZLA yerde bulunduysa → hangisi oldugunu kullaniciya sor"
+            "\n**ILK CAGRI: find_node_everywhere(keywords='...') — prefix'siz!**"
+            "\nBu tool TUM SCADA instance'larinda ayni anda arar. Hangi SCADA oldugunu"
+            "\nhatirlamana/secmene gerek yok. Response'da:"
+            "\n  - selected_tool_prefix varsa → sonraki tool cagrilarinda onu kullan"
+            "\n    (ornek: envestbulutkorubin_get_node, envestbulutkorubin_get_device_tag_values)"
+            "\n  - total_found==0 ise kullaniciya bildir, TAHMIN YURUTME"
+            "\n  - Birden fazla esleme varsa kullaniciya hangisi oldugunu sor"
+            "\nYASAK: '<prefix>_find_nodes_by_keywords' ile tek tek prefix denemek — BIR TANE find_node_everywhere YETER."
             "\nOrnek akis:"
             "\n  Kullanici: 'selafur kuyu 4 icin pompa sec'"
-            "\n  1. corumscada_find_nodes_by_keywords('selafur kuyu 4') → bos"
-            "\n  2. envestbulutkorubin_find_nodes_by_keywords('selafur kuyu 4') → nodeId=23280"
-            "\n  3. Envest Korubin'de bulundu → envestbulutkorubin_* tool'lari ile devam"
-            "\n  4. korucaps_search_pumps(...) → pompa onerisi (korucaps ortak tool)"
-            "\n\nIMPORTANT - Skills: If list_skills tool is available, call it FIRST when starting a new task. "
-            "Skills contain domain knowledge (tag naming rules, screen types, device specs) that help you "
-            "use the correct tags and parameters. Read the relevant skill BEFORE calling SCADA tools."
-            "\n\nIMPORTANT - Pump selection: When selecting pumps for a SCADA node, read LIVE tag values "
-            "(Debimetre, ToplamHm) NOT static node parameters (np_PompaDebi, XD_BasmaYukseklik). "
-            "np_ parameters are catalog values, NOT real measurements."
+            "\n  1. find_node_everywhere('selafur kuyu 4') → selected_tool_prefix='envestbulutkorubin_', nodeId=23280"
+            "\n  2. envestbulutkorubin_get_node(23280) → nView + pompa_secimi_uyarisi_tr"
+            "\n  3. envestbulutkorubin_get_device_tag_values(23280, ['ToplamHm','Debimetre','Pompa1StartStopDurumu','An_Guc'])"
+            "\n  4. korucaps_search_pumps(flow_m3h=<canli_debi>, head_m=<canli_ToplamHm>, ...)"
+            "\n\n=== ZORUNLU ILK ADIM: core-rules SKILL'INI OKU ==="
+            "\nHER yeni gorev basladiginda ILK aksiyon: "
+            "get_skill(skill_name='core-rules') cagir. "
+            "Bu dosyada coklu instance arama, birim kurallari, yuvarlama yasagi, tag semantigi "
+            "(X*=ayar, T_*=sayac), pompa secimi akisi, canli tag zorunlulugu, panel URL kurallari var. "
+            "Core-rules'u OKUMADAN herhangi bir SCADA tool'u cagirma."
+            "\n\nIMPORTANT - Skills: list_skills ile tum skill'leri gor. "
+            "Gorev konusuna gore ilgili domain skill'ini de oku (orn. korubin-scada SKILL.md, "
+            "screen-types/nview/<nView>.md detay)."
+            "\n\nIMPORTANT - Pompa secimi KRITIK (tekrar): Hm ve Debi icin CANLI tag oku "
+            "(Debimetre, ToplamHm). YASAK: XD_BasmaYukseklik (AYAR), np_PompaHm (KATALOG), "
+            "XS_DebimetreMax (SENSOR TAVANI). X* ile baslayan TUM tag'ler AYAR, olcum DEGIL. "
+            "Ayrica: Kuyu -> SP serisi, Terfi -> CR serisi. "
+            "Oneri aldiktan sonra formulle dogrula: P_hid=(Q*H)/367, P1=P_hid/η. "
+            "Tutarsiz ise tekrar oku ve kullaniciya bildir."
         )
         instructions = "\n".join(routing_lines)
 
@@ -369,6 +381,7 @@ class MultiMcpDispatchASGI:
             json_response=True,
         )
 
+        scada_cfgs: list = []
         for cfg in configs:
             if cfg.toolpacks:
                 from .toolpacks import resolve_packs
@@ -376,8 +389,16 @@ class MultiMcpDispatchASGI:
             else:
                 from .toolpacks import default_scada_packs
                 packs = default_scada_packs()
+            pack_ids = {getattr(spec.pack, "id", "") for spec in packs}
+            if "scada" in pack_ids:
+                scada_cfgs.append(cfg)
             for spec in packs:
                 spec.pack.register(merged_mcp, cfg)
+
+        # Server-side cross-instance node search — LLM'in prefix'leri
+        # hatirlamasina gerek kalmadan TUM SCADA instance'larinda tek seferde arar.
+        if len(scada_cfgs) >= 1:
+            _register_cross_instance_tools(merged_mcp, scada_cfgs)
 
         merged_mcp.settings.streamable_http_path = "/"
         merged_mcp.settings.mount_path = "/"
@@ -407,3 +428,126 @@ class MultiMcpDispatchASGI:
             except Exception:
                 pass
         self._merged_cache.clear()
+
+
+def _register_cross_instance_tools(mcp: Any, scada_cfgs: list) -> None:
+    """
+    Register server-side cross-instance search tools on a merged MCP.
+
+    These tools fan out to all SCADA instances in the token's scope,
+    so the LLM does not need to remember to try different prefixes.
+    """
+    from .db import connect as _db_connect
+
+    @mcp.tool(name="find_node_everywhere")
+    def find_node_everywhere(keywords: str, limit_per_instance: int = 5) -> Any:
+        """ANY SCADA node arama — TUM instance'larda aynı anda arar.
+
+        Kullanıcı bir node adı söyledi ama hangi SCADA olduğunu belirtmediyse
+        (ör. "selafur kuyu 4", "akkent terfi") BUNU ÇAĞIR. Prefix hatırlamana gerek yok.
+
+        Returns: Her instance için ayrı sonuç bloğu. Sonraki çağrılarda
+        sonucun `instance_prefix` alanını kullanarak ilgili instance'ın
+        tool'larını çağır (ör. `corumscada_get_node`, `envestbulutkorubin_get_device_tag_values`).
+        """
+        kw = (keywords or "").strip()
+        if not kw:
+            return {"error": "keywords parametresi zorunlu", "ornek": "selafur kuyu 4"}
+
+        kw_norm = kw.lower()
+        lim = max(1, min(int(limit_per_instance), 50))
+        results: list[dict[str, Any]] = []
+        total_found = 0
+        errors: list[dict[str, Any]] = []
+
+        for cfg in scada_cfgs:
+            if not cfg.db:
+                continue
+            block: dict[str, Any] = {
+                "instance_id": cfg.instance_id,
+                "instance_prefix": cfg.tool_prefix.rstrip("_"),
+                "mcp_name": cfg.mcp_name,
+                "tool_prefix": cfg.tool_prefix,
+                "nodes": [],
+            }
+            try:
+                with _db_connect(cfg.db) as conn:
+                    with conn.cursor() as cur:
+                        # Case-insensitive, ascii-normalize friendly LIKE
+                        like = f"%{kw_norm}%"
+                        cur.execute(
+                            """
+                            SELECT n.id, n.nName, n.nView, n.nType, n.nState
+                            FROM node n
+                            WHERE LOWER(n.nName) LIKE %s
+                               OR LOWER(n.nView) LIKE %s
+                            ORDER BY CHAR_LENGTH(n.nName) ASC
+                            LIMIT %s
+                            """,
+                            (like, like, lim),
+                        )
+                        rows = list(cur.fetchall())
+                        block["nodes"] = rows
+                        total_found += len(rows)
+            except Exception as exc:
+                block["error"] = f"{type(exc).__name__}: {exc}"
+                errors.append({"instance": cfg.instance_id, "error": block["error"]})
+            results.append(block)
+
+        out: dict[str, Any] = {
+            "keywords": kw,
+            "total_found": total_found,
+            "instances_searched": len(results),
+            "results": results,
+        }
+        if errors:
+            out["errors"] = errors
+
+        if total_found == 0:
+            prefixes = [r["instance_prefix"] for r in results]
+            out["hint_tr"] = (
+                f"'{kw}' hicbir SCADA instance'inda ({', '.join(prefixes)}) bulunamadi. "
+                "Kullaniciya yazim hatasi olabilir mi diye sor, TAHMIN YURUTME."
+            )
+        elif total_found > 0:
+            # Auto-pick hint: if only one instance returned results, suggest it
+            non_empty = [r for r in results if r["nodes"]]
+            if len(non_empty) == 1:
+                winner = non_empty[0]
+                out["selected_instance"] = winner["instance_prefix"]
+                out["selected_tool_prefix"] = winner["tool_prefix"]
+                out["hint_tr"] = (
+                    f"Sadece '{winner['instance_prefix']}' instance'inda bulundu. "
+                    f"Sonraki tool cagrilarinda '{winner['tool_prefix']}' prefix'ini kullan "
+                    f"(ornek: {winner['tool_prefix']}get_node, {winner['tool_prefix']}get_device_tag_values)."
+                )
+            else:
+                out["hint_tr"] = (
+                    "Birden fazla instance'da esleyen node var — kullaniciya hangisi "
+                    "oldugunu sor, tahmin yurutme. Sectikten sonra o instance'in "
+                    "'tool_prefix' degerini kullan."
+                )
+        return out
+
+    @mcp.tool(name="list_scada_instances")
+    def list_scada_instances() -> Any:
+        """Bu token icin erisilebilir SCADA instance'larini listele.
+
+        find_node_everywhere otomatik olarak hepsinde arama yapar, ama hangi
+        SCADA'lar mevcut oldugunu gormek istersen bu tool'u cagir."""
+        return {
+            "instances": [
+                {
+                    "instance_id": cfg.instance_id,
+                    "mcp_name": cfg.mcp_name,
+                    "tool_prefix": cfg.tool_prefix,
+                    "panel_base_url": cfg.panel_base_url,
+                    "description": cfg.mcp_description or "",
+                }
+                for cfg in scada_cfgs
+            ],
+            "hint_tr": (
+                "Node ararken prefix hatirlamana gerek yok: find_node_everywhere "
+                "otomatik hepsinde arar."
+            ),
+        }

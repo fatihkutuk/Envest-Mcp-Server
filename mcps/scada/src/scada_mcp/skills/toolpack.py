@@ -68,14 +68,31 @@ Progressive disclosure: content is NOT included - use get_skill to read."""
                     }]
                 }
 
-            lines = [f"## Available Skills ({len(skills)})\n"]
+            # core-rules (varsa) her zaman EN USTTE — zorunlu ilk okuma
+            core = None
+            others = []
             for s in skills:
+                if s["name"] == "core-rules":
+                    core = s
+                else:
+                    others.append(s)
+            ordered = ([core] if core else []) + others
+
+            lines = [f"## Available Skills ({len(skills)})\n"]
+            if core is not None:
+                lines.append(
+                    "> **ZORUNLU ILK OKUMA:** `core-rules` skill'ini HER gorev basinda "
+                    "`get_skill(skill_name='core-rules')` ile oku. Tum kritik kurallar "
+                    "(coklu instance, birim, yuvarlama, tag semantigi, pompa secimi) bu dosyada.\n"
+                )
+            for s in ordered:
                 desc = s["description"]
                 if isinstance(desc, str):
                     # Trim to first line for listing
                     desc = desc.strip().split("\n")[0]
                 files_str = ", ".join(f"`{f}`" for f in s["files"])
-                lines.append(f"### {s['name']} (v{s['version']})")
+                tag = " ⭐ READ FIRST" if s["name"] == "core-rules" else ""
+                lines.append(f"### {s['name']} (v{s['version']}){tag}")
                 lines.append(f"{desc}")
                 lines.append(f"**Files:** {files_str}\n")
 

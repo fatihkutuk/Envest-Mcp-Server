@@ -266,6 +266,13 @@ def _run_multi(ns: argparse.Namespace, *, root: Path) -> int:
                 mcps=mcps,
             )
             logger.info("MCP reload subjects=%s", list(apps_by_sub.keys()))
+            # Coklu-instance tokenlari icin cache'lenmis merged MCP'leri dusur —
+            # aksi halde guncel DB credentials eski instance'ta kilitli kalir.
+            try:
+                if hasattr(dispatch, "clear_merged_cache"):
+                    await dispatch.clear_merged_cache()
+            except Exception as exc:
+                logger.warning("clear_merged_cache failed: %s", exc)
             if not apps_by_sub:
                 logger.warning("no valid auth instances left; /mcp will return 404")
                 return

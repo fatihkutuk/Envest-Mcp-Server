@@ -13,7 +13,7 @@ toolpacks:
   - "skills"
 
 db:
-  host: "85.111.94.232"
+  host: "127.22.144.15"
   port: 3306
   dbname: "kbindb"
   username: "${DB_USERNAME}"

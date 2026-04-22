@@ -9,6 +9,10 @@ version: "1.0.0"
 
 # Korubin SCADA Platform - Domain Knowledge
 
+> **ONCE OKU:** `get_skill(skill_name='core-rules')` — her gorev oncesi okunmasi gereken
+> kritik kurallar (coklu instance, birim, yuvarlama, tag semantigi, pompa secimi).
+> Bu dosya SCADA'ya ozel detay; core-rules genel davranis kurallari.
+
 ## Overview
 
 Korubin, Envest firmasinin gelistirdigi web tabanli SCADA (Supervisory Control and Data Acquisition) platformudur. Su idareleri, belediyeler ve endustriyel tesisler icin kuyu, terfi istasyonu, depo ve DMA (District Metered Area) izleme/kontrol sistemi sunar.

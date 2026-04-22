@@ -60,6 +60,13 @@ Verilen Q (debi) ve H (basma yuksekligi) icin en uygun pompalari bulur.
 Sonuctaki her pompa GARANTILI olarak istenen H basma yuksekligini saglar.
 Sonuctaki Q degeri = pompanin istenen H'de verdigi GERCEK debidir (istenen Q'dan farkli olabilir).
 
+## BIR SCADA NODE ICIN CAGIRIYORSAN:
+**ONCE `<prefix>_prepare_pump_selection(nodeId)` cagir** — bu tool canli tag'leri (ToplamHm,
+Debimetre, An_Guc, YaklasikHidrolikVerim) okur, formulle dogrular, hazir Q/H dondurur.
+Response'ta `next_action` varsa ONU AYNEN cagir — flow_m3h ve head_m'i sen tahmin etme.
+
+Eger node yoksa / sadece Q ve H biliniyorsa direkt bu tool'u cagir.
+
 ## KRITIK: SONUCLARI NASIL YORUMLA
 - H (basma yuksekligi) = ISTENEN H. Her pompa bu H'de calisir, Hm DUSMEZ.
 - Q (debi) = Pompanin bu H'de verdigi gercek debi. Istenen Q'dan BUYUK veya ESIT olur, ASLA DUSMEZ.
@@ -101,11 +108,33 @@ ENDUSTRIYEL (application='industrial'):
 - "endustriyel" / "fabrika" / "proses" -> sub_application yok
 
 ## SCADA NODE'DAN SECIM:
-1. Node adinda "Kuyu" -> application='groundwater', sub_application='WELLINS'
-2. Node adinda "Terfi" -> application='booster', sub_application='BOOSPUMP'
+1. Node adinda "Kuyu" -> application='groundwater', sub_application='WELLINS' (SP serisi)
+2. Node adinda "Terfi" -> application='booster', sub_application='BOOSPUMP' (CR serisi)
 3. Node adinda "Depo" -> application='domestic', sub_application='PUMPSDO'
-4. np_PompaDebi -> debi (m3/h veya lt/sn, birime dikkat)
-5. ToplamHm veya BasmaYukseklik -> H (metre)"""
+
+## KRITIK: CANLI TAG KULLAN, AYAR DEGERI DEGIL!
+Pompa secerken get_device_tag_values ile CANLI OLCUM oku:
+
+DOGRU (canli olcum tag'leri):
+- flow_m3h = get_device_tag_values('Debimetre') -> anlik debi (m3/h)
+- head_m   = get_device_tag_values('ToplamHm') -> anlik toplam basma yuksekligi (metre)
+
+YASAK (bunlar AYAR / KATALOG degerleri, GERCEK OLCUM DEGIL):
+- np_PompaDebi / np_PompaHm -> katalog degeri (nodePar tablosunda sabit)
+- XD_BasmaYukseklik         -> KULLANICI AYARI, gercek basma DEGIL!
+- XS_DebimetreMax           -> sensor tavani, gercek debi DEGIL!
+- XC_HedefBasinc            -> hedef setpoint, gercek olcum DEGIL!
+
+X* ile baslayan TUM tag'ler AYARDIR, olcum degildir. Kullanma.
+np_* ile baslayan tag'ler KATALOG degerdir, sahada gercek calisma degil.
+Sadece CANLI olcum tag'leri (Debimetre, ToplamHm, BasincSensoru, SuSeviye, An_Guc vb.) kullan.
+
+## POMPA CALISIYOR MU KONTROLU (ZORUNLU):
+search_pumps cagirmadan ONCE get_device_tag_values ile:
+- Pompa1StartStopDurumu veya PompaCalismaDurumu -> 1 olmali
+- 0 ise: Hm ve Debi GUVENILMEZ (dinamik degerler akis gerektirir)
+- Durmussa: get_node_log_data ile son calistigi donemi bulup o tarihten ortalama al
+- Tutarsizlik: P1 ≈ (Q × H) / 236 formulu ile an_Guc'u cross-check yap"""
             freq = frequency_hz or "50"
 
             # Map application name to ID
@@ -145,6 +174,23 @@ ENDUSTRIYEL (application='industrial'):
                 ranking_criteria=ranking_criteria,
             )
 
+            # Impeller stilini isimden cikar: sonu N ile biten Grundfos pompalar
+            # tirasli fan (kuculmus impeller) olarak kabul edilir.
+            # Ornekler: 'SP 125-8-AAN' -> tirasli, 'SP 125-8' -> tam capli.
+            import re as _re_imp
+            _TRIMMED_RE = _re_imp.compile(r"N\s*$")
+            for _p in results:
+                _name = str(_p.get("ProdName") or "")
+                _is_trimmed = bool(_TRIMMED_RE.search(_name))
+                _p["impeller_style"] = "trimmed" if _is_trimmed else "full"
+                _p["impeller_note_tr"] = (
+                    "Tirasli fan (kuculmus impeller) — H/Q ayari fabrikada tırasla yapilmis. "
+                    "Surucu varsa tercih edilmez (surucu zaten ayari yapar)."
+                    if _is_trimmed else
+                    "Tam capli (standart) impeller. Sabit hizda calisir. "
+                    "Surucu ile H/Q ayari yapilir."
+                )
+
             top_results = results[:max_results]
 
             if not top_results:
@@ -157,8 +203,10 @@ ENDUSTRIYEL (application='industrial'):
 
             lines = []
             for i, p in enumerate(top_results):
+                _imp = p.get("impeller_style", "full")
+                _imp_tag = " [TIRASLI FAN]" if _imp == "trimmed" else " [TAM CAPLI]"
                 line = (
-                    f"{i + 1}. **{p['ProdName']}** ({p.get('stages', 1)} kademe) [{p.get('ProductNo', '')}]\n"
+                    f"{i + 1}. **{p['ProdName']}**{_imp_tag} ({p.get('stages', 1)} kademe) [{p.get('ProductNo', '')}]\n"
                     f"   Q={p['qActual']} m3/h | H={head_m} m (garanti) | P2={p['p2Actual']} kW | P1={p['p1Actual']} kW\n"
                     f"   eta_pompa={p['etaPump']}% | eta_toplam={p['etaTotal']}% | n={p['nActual']} rpm"
                 )
@@ -167,6 +215,16 @@ ENDUSTRIYEL (application='industrial'):
                 if p.get("energyKwh") is not None:
                     line += f" | Yillik enerji={p['energyKwh']:,} kWh"
                 lines.append(line)
+
+            # VFD/impeller kuralini aciklamaya ekle
+            _vfd_rule_tr = (
+                "\n### IMPELLER KURALI (TIRASLI FAN vs TAM CAPLI)\n"
+                "- **Tam capli** = standart impeller, sabit hizda calisir.\n"
+                "- **Tirasli fan** = fabrikada impelleri kuculmus (isim sonunda `N`, orn. 'SP 125-8-AAN').\n"
+                "- Sistemde **surucu (VFD) varsa** → tam capli tercih edilir (surucu zaten H/Q ayarini yapar).\n"
+                "- **Surucu yoksa** → tirasli fan daha esnek ayar imkani verir.\n"
+                "- Surucu ile istenen noktaya ulasilamiyorsa → tirasliya dunulur.\n"
+            )
 
             text = (
                 f"## KoruCAPS Pompa Boyutlandirma Sonuclari\n\n"
@@ -178,6 +236,7 @@ ENDUSTRIYEL (application='industrial'):
                 f"> Q degeri = pompanin H={head_m} m'de verdigi gercek debidir (istenen {flow_m3h} m3/h'den BUYUK veya ESIT).\n"
                 f"> Q fazlasi VFD ile frekans dusurulerek istenen debiye ayarlanabilir.\n\n"
                 f"**{len(top_results)} uygun pompa:**\n\n" + "\n\n".join(lines)
+                + _vfd_rule_tr
             )
 
             return {"content": [{"type": "text", "text": text}]}
