@@ -8,8 +8,13 @@ from mcp.server.fastmcp import FastMCP
 
 from ..export_files import (
     export_active_alarms_impl,
+    export_alarm_definitions_impl,
+    export_alarms_history_impl,
     export_custom_data_impl,
     export_log_data_impl,
+    export_nodes_impl,
+    export_user_groups_impl,
+    export_users_impl,
     generate_node_report_impl,
     generate_scada_report_impl,
 )
@@ -107,6 +112,85 @@ class ScadaExportsPack:
             """Aktif alarmları Excel veya CSV dosyası olarak dışa aktarır."""
             return guard(tool, _export_active_alarms_impl_wrapped)(format, limit)
 
+        # --- export_users ---
+        tool = prefixed_name(prefix, "export_users")
+
+        def _export_users_impl_wrapped(
+            format: str = "xlsx", status: str = "all",
+            company: str = "", city: str = "",
+        ) -> Any:
+            return export_users_impl(cfg, format, status, company, city)
+
+        @mcp.tool(name=tool)
+        def export_users(
+            format: str = "xlsx", status: str = "all",
+            company: str = "", city: str = "",
+        ) -> str:
+            """Tüm kullanıcıları Excel/CSV export (server-side, LLM'den data geçmez).
+format: xlsx|csv. status: all|active|inactive. company/city: filtre.
+list_users+export_custom_data YERİNE bunu kullan."""
+            return guard(tool, _export_users_impl_wrapped)(format, status, company, city)
+
+        # --- export_nodes ---
+        tool = prefixed_name(prefix, "export_nodes")
+
+        def _export_nodes_impl_wrapped(
+            format: str = "xlsx", nType: str = "",
+            keyword: str = "", only_active: bool = False,
+        ) -> Any:
+            return export_nodes_impl(cfg, format, nType, keyword, only_active)
+
+        @mcp.tool(name=tool)
+        def export_nodes(
+            format: str = "xlsx", nType: str = "",
+            keyword: str = "", only_active: bool = False,
+        ) -> str:
+            """Tüm node'ları Excel/CSV export.
+format: xlsx|csv. nType: tip kodu (777=kuyu). keyword: isim filtresi. only_active: nState>=0."""
+            return guard(tool, _export_nodes_impl_wrapped)(format, nType, keyword, only_active)
+
+        # --- export_alarm_definitions ---
+        tool = prefixed_name(prefix, "export_alarm_definitions")
+
+        def _export_alarm_definitions_impl_wrapped(format: str = "xlsx", nodeId: int = 0) -> Any:
+            return export_alarm_definitions_impl(cfg, format, nodeId)
+
+        @mcp.tool(name=tool)
+        def export_alarm_definitions(format: str = "xlsx", nodeId: int = 0) -> str:
+            """Alarm tanımları (alarmparameters). nodeId>0 → sadece o node.
+Aktif alarm için export_active_alarms, tarih aralığı için export_alarms_history."""
+            return guard(tool, _export_alarm_definitions_impl_wrapped)(format, nodeId)
+
+        # --- export_alarms_history ---
+        tool = prefixed_name(prefix, "export_alarms_history")
+
+        def _export_alarms_history_impl_wrapped(
+            format: str = "xlsx", start_date: str = "",
+            end_date: str = "", only_active: bool = False, limit: int = 5000,
+        ) -> Any:
+            return export_alarms_history_impl(cfg, format, start_date, end_date, only_active, limit)
+
+        @mcp.tool(name=tool)
+        def export_alarms_history(
+            format: str = "xlsx", start_date: str = "",
+            end_date: str = "", only_active: bool = False, limit: int = 5000,
+        ) -> str:
+            """alarmstate zaman aralığı export.
+start_date/end_date: 'YYYY-MM-DD[ HH:MM:SS]'. only_active: state=1. limit max 20000.
+Not: ayrı history tablosu yok, alarmstate.time üzerinden yaklaşım."""
+            return guard(tool, _export_alarms_history_impl_wrapped)(format, start_date, end_date, only_active, limit)
+
+        # --- export_user_groups ---
+        tool = prefixed_name(prefix, "export_user_groups")
+
+        def _export_user_groups_impl_wrapped(format: str = "xlsx") -> Any:
+            return export_user_groups_impl(cfg, format)
+
+        @mcp.tool(name=tool)
+        def export_user_groups(format: str = "xlsx") -> str:
+            """TUM kullanici gruplari + her grubun kullanici sayisi."""
+            return guard(tool, _export_user_groups_impl_wrapped)(format)
+
     def manifest_groups(self, *, prefix: str) -> list[dict]:
         p = prefix
         return [
@@ -119,6 +203,11 @@ class ScadaExportsPack:
                     p + "generate_node_report",
                     p + "export_custom_data",
                     p + "export_active_alarms",
+                    p + "export_users",
+                    p + "export_nodes",
+                    p + "export_alarm_definitions",
+                    p + "export_alarms_history",
+                    p + "export_user_groups",
                 ],
             },
         ]

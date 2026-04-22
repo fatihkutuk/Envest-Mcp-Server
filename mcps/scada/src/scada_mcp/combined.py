@@ -181,9 +181,14 @@ def _scan_instances_into_registry(
         if not cfg.auth or not cfg.auth.enabled:
             logger.info("skip %s: auth disabled", p.name)
             continue
-        # Always auto-generate a token_secret for legacy fallback flow.
-        # Admin panel tokens (tok_ prefix) use their own per-token secrets.
-        auto_secret = _secrets.token_hex(32)
+        # Legacy fallback flow için ve download signed-URL için kullanilan secret.
+        # config.py artik cfg.auth.token_secret'i kalici dosyadan okuyup sagliyor —
+        # burada ayni secret'i secret_registry'ye aynen yaziyoruz ki sign+verify uyussun.
+        # Admin panel tokenlari (tok_ prefix) kendi per-token secret'leriyle calisir.
+        if cfg.auth and (cfg.auth.token_secret or "").strip():
+            auto_secret = cfg.auth.token_secret
+        else:
+            auto_secret = _secrets.token_hex(32)
         if cfg.instance_id in secret_registry:
             logger.warning("duplicate instance_id %r, skipping %s", cfg.instance_id, p)
             continue
@@ -296,6 +301,27 @@ def _run_multi(ns: argparse.Namespace, *, root: Path) -> int:
         wait_ms_by_sub=wait_ms_by_sub,
     )
 
+    def _resolve_secret_for_sub(sub: str) -> str | None:
+        """Legacy instance_id -> secret_registry, tok_ -> token_store lookup."""
+        secret = secret_registry.get(sub)
+        if secret:
+            return secret
+        if sub.startswith("tok_"):
+            rec = store.get_token(sub)
+            if rec and not rec.get("revoked"):
+                return rec.get("token_secret")
+        return None
+
+    def _tok_targets_instance(sub: str, instance_id: str) -> bool:
+        """For tok_ tokens, check instance_id is in allowed_instances."""
+        if not sub.startswith("tok_"):
+            return True  # legacy tokens are scoped via sub == instance_id check
+        rec = store.get_token(sub)
+        if not rec or rec.get("revoked"):
+            return False
+        allowed = rec.get("allowed_instances") or []
+        return instance_id in allowed
+
     async def export_download_multi(request: Request) -> Response:
         from urllib.parse import unquote
 
@@ -309,13 +335,19 @@ def _run_multi(ns: argparse.Namespace, *, root: Path) -> int:
                 return JSONResponse({"error": "invalid download token encoding"}, status_code=400)
             try:
                 sub = peek_sub_unverified(dt)
-                secret = secret_registry.get(sub)
+                secret = _resolve_secret_for_sub(sub)
                 if not secret:
                     return JSONResponse({"error": "unknown instance"}, status_code=401)
                 claims = verify_token(token_secret=secret, token=dt)
                 if claims.get("scope") != "file_download":
                     return JSONResponse({"error": "invalid download token"}, status_code=401)
-                if str(claims.get("sub") or "") != instance_id or str(claims.get("fn") or "") != fn:
+                claim_sub = str(claims.get("sub") or "")
+                if claim_sub.startswith("tok_"):
+                    if not _tok_targets_instance(claim_sub, instance_id):
+                        return JSONResponse({"error": "forbidden"}, status_code=403)
+                elif claim_sub != instance_id:
+                    return JSONResponse({"error": "forbidden"}, status_code=403)
+                if str(claims.get("fn") or "") != fn:
                     return JSONResponse({"error": "forbidden"}, status_code=403)
             except TokenError as e:
                 return JSONResponse({"error": "invalid download token", "detail": str(e)}, status_code=401)
@@ -324,13 +356,19 @@ def _run_multi(ns: argparse.Namespace, *, root: Path) -> int:
             if dt:
                 try:
                     sub = peek_sub_unverified(dt)
-                    secret = secret_registry.get(sub)
+                    secret = _resolve_secret_for_sub(sub)
                     if not secret:
                         return JSONResponse({"error": "unknown instance"}, status_code=401)
                     claims = verify_token(token_secret=secret, token=dt)
                     if claims.get("scope") != "file_download":
                         return JSONResponse({"error": "invalid download token"}, status_code=401)
-                    if str(claims.get("sub") or "") != instance_id or str(claims.get("fn") or "") != fn:
+                    claim_sub = str(claims.get("sub") or "")
+                    if claim_sub.startswith("tok_"):
+                        if not _tok_targets_instance(claim_sub, instance_id):
+                            return JSONResponse({"error": "forbidden"}, status_code=403)
+                    elif claim_sub != instance_id:
+                        return JSONResponse({"error": "forbidden"}, status_code=403)
+                    if str(claims.get("fn") or "") != fn:
                         return JSONResponse({"error": "forbidden"}, status_code=403)
                 except TokenError as e:
                     return JSONResponse({"error": "invalid download token", "detail": str(e)}, status_code=401)
@@ -339,10 +377,18 @@ def _run_multi(ns: argparse.Namespace, *, root: Path) -> int:
                 if not token:
                     return JSONResponse({"error": "missing bearer token"}, status_code=401)
                 try:
-                    claims = verify_token_with_registry(token=token, registry=secret_registry)
+                    sub = peek_sub_unverified(token)
+                    secret = _resolve_secret_for_sub(sub)
+                    if not secret:
+                        return JSONResponse({"error": "unknown instance"}, status_code=401)
+                    claims = verify_token(token_secret=secret, token=token)
                 except TokenError as e:
                     return JSONResponse({"error": "invalid token", "detail": str(e)}, status_code=401)
-                if str(claims.get("sub") or "") != instance_id:
+                claim_sub = str(claims.get("sub") or "")
+                if claim_sub.startswith("tok_"):
+                    if not _tok_targets_instance(claim_sub, instance_id):
+                        return JSONResponse({"error": "forbidden"}, status_code=403)
+                elif claim_sub != instance_id:
                     return JSONResponse({"error": "forbidden"}, status_code=403)
 
         ex_root = instances_dir / instance_id / "exports"

@@ -337,41 +337,20 @@ class MultiMcpDispatchASGI:
                 )
 
         routing_lines.append(
-            "\nWhen the user mentions a specific system/site name, use the matching prefix. "
-            "If unclear, ask which system they mean before calling a tool. "
-            "NEVER mix prefixes in a single query for the SAME logical operation — "
-            "but see the CROSS-INSTANCE SEARCH rule below for node lookup."
-            "\n\n=== NODE ARAMA (TEK TOOL — find_node_everywhere) ==="
-            "\nKullanici bir node adi sordugunda (orn. 'selafur kuyu 4', 'akkent terfi'):"
-            "\n**ILK CAGRI: find_node_everywhere(keywords='...') — prefix'siz!**"
-            "\nBu tool TUM SCADA instance'larinda ayni anda arar. Hangi SCADA oldugunu"
-            "\nhatirlamana/secmene gerek yok. Response'da:"
-            "\n  - selected_tool_prefix varsa → sonraki tool cagrilarinda onu kullan"
-            "\n    (ornek: envestbulutkorubin_get_node, envestbulutkorubin_get_device_tag_values)"
-            "\n  - total_found==0 ise kullaniciya bildir, TAHMIN YURUTME"
-            "\n  - Birden fazla esleme varsa kullaniciya hangisi oldugunu sor"
-            "\nYASAK: '<prefix>_find_nodes_by_keywords' ile tek tek prefix denemek — BIR TANE find_node_everywhere YETER."
-            "\nOrnek akis:"
-            "\n  Kullanici: 'selafur kuyu 4 icin pompa sec'"
-            "\n  1. find_node_everywhere('selafur kuyu 4') → selected_tool_prefix='envestbulutkorubin_', nodeId=23280"
-            "\n  2. envestbulutkorubin_get_node(23280) → nView + pompa_secimi_uyarisi_tr"
-            "\n  3. envestbulutkorubin_get_device_tag_values(23280, ['ToplamHm','Debimetre','Pompa1StartStopDurumu','An_Guc'])"
-            "\n  4. korucaps_search_pumps(flow_m3h=<canli_debi>, head_m=<canli_ToplamHm>, ...)"
-            "\n\n=== ZORUNLU ILK ADIM: core-rules SKILL'INI OKU ==="
-            "\nHER yeni gorev basladiginda ILK aksiyon: "
-            "get_skill(skill_name='core-rules') cagir. "
-            "Bu dosyada coklu instance arama, birim kurallari, yuvarlama yasagi, tag semantigi "
-            "(X*=ayar, T_*=sayac), pompa secimi akisi, canli tag zorunlulugu, panel URL kurallari var. "
-            "Core-rules'u OKUMADAN herhangi bir SCADA tool'u cagirma."
-            "\n\nIMPORTANT - Skills: list_skills ile tum skill'leri gor. "
-            "Gorev konusuna gore ilgili domain skill'ini de oku (orn. korubin-scada SKILL.md, "
-            "screen-types/nview/<nView>.md detay)."
-            "\n\nIMPORTANT - Pompa secimi KRITIK (tekrar): Hm ve Debi icin CANLI tag oku "
-            "(Debimetre, ToplamHm). YASAK: XD_BasmaYukseklik (AYAR), np_PompaHm (KATALOG), "
-            "XS_DebimetreMax (SENSOR TAVANI). X* ile baslayan TUM tag'ler AYAR, olcum DEGIL. "
-            "Ayrica: Kuyu -> SP serisi, Terfi -> CR serisi. "
-            "Oneri aldiktan sonra formulle dogrula: P_hid=(Q*H)/367, P1=P_hid/η. "
-            "Tutarsiz ise tekrar oku ve kullaniciya bildir."
+            "\nNode ismi arama: find_node_everywhere(keywords). Node ID BİLİYORSAN direkt kullan."
+            "\n\nILK ADIM: get_skill('core-rules') — birim, yuvarlama, tag semantiği, pompa seçimi."
+            "\n\nPompa seçimi AKIŞI:"
+            "\n1) Kullanıcı node_id verdi (örn '1192 için pompa seç') → pump_select_for_node(node_id)"
+            "\n   - Tek çağrı, tüm SCADA'larda bakar, nView'dan kuyu/terfi anlar."
+            "\n   - Response'ta selected_tool_prefix + next_action gelir."
+            "\n2) Next_action'ı aynen çağır → canlı Q/H okuyup search_pumps hazır olur."
+            "\n3) Kullanıcı node_id vermediyse → önce find_node_everywhere(name)."
+            "\n\nCanlı tag: ToplamHm, Debimetre. YASAK: XD_BasmaYukseklik, np_*, X*. "
+            "Kuyu→SP, Terfi→CR. Formül: P_hid=(Q×H)/367."
+            "\n\nMevcut pompa sorusu ('kendi pompası ne', 'takılı pompa'): "
+            "<prefix>_get_installed_pump_info(nodeId) — pump_eff + node_param np_* birden okur. "
+            "annexa < 1 → pompa yaşlanmış, H_gerçek = H_katalog × annexa (projeksiyonda kullan)."
+            "\n\nFrekans projeksiyonu: analyze_pump_at_frequency (saf Affinity değil, sistem eğrisi)."
         )
         instructions = "\n".join(routing_lines)
 
@@ -528,6 +507,96 @@ def _register_cross_instance_tools(mcp: Any, scada_cfgs: list) -> None:
                     "'tool_prefix' degerini kullan."
                 )
         return out
+
+    @mcp.tool(name="pump_select_for_node")
+    def pump_select_for_node(node_id: int) -> Any:
+        """Node ID için pompa seç — TEK ÇAĞRI, tüm SCADA'larda bakar, nView'dan kuyu/terfi anlar.
+
+        Kullanıcı sadece node_id verdiyse (örn. 'Serbest Bölge Kuyu 1192 için pompa seç'):
+        bu tool'u çağır. Hangi instance'ta olduğunu bulur, canlı tag'leri okur, Q/H hazır döner.
+        Sonra response'taki 'next_action' ile korucaps_search_pumps çağır.
+        """
+        nid = int(node_id)
+        if nid <= 0:
+            return {"error": "node_id > 0 olmali"}
+
+        # Her instance'ta node var mi diye bak
+        found_cfg = None
+        found_node = None
+        errors: list[dict[str, Any]] = []
+        for cfg in scada_cfgs:
+            if not cfg.db:
+                continue
+            try:
+                with _db_connect(cfg.db) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "SELECT id, nName, nView, nType, nState FROM node WHERE id = %s",
+                            (nid,),
+                        )
+                        row = cur.fetchone()
+                        if row:
+                            found_cfg = cfg
+                            found_node = row
+                            break
+            except Exception as exc:
+                errors.append({
+                    "instance": cfg.instance_id,
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+
+        if found_cfg is None:
+            if errors and len(errors) == len([c for c in scada_cfgs if c.db]):
+                return {
+                    "error": "Tüm SCADA DB bağlantıları hata verdi.",
+                    "errors": errors,
+                    "hint_tr": "DB erişim sorunu — kullanıcıya bildir, tekrar denemesini söyle.",
+                }
+            return {
+                "error": f"Node {nid} hiçbir SCADA'da bulunamadi.",
+                "errors": errors or None,
+                "hint_tr": "Node ID yanlış olabilir. Kullanıcıya teyit ettir.",
+            }
+
+        # nView'dan pompa tipi + korucaps parametreleri
+        nv = str(found_node.get("nView") or "").lower()
+        nname = str(found_node.get("nName") or "").lower()
+        is_well = ("kuyu" in nv) or ("kuyu" in nname) or ("well" in nv)
+        is_booster = ("terfi" in nv) or ("terfi" in nname) or ("booster" in nv) or ("hidro" in nv)
+        if is_well:
+            kc_app, kc_sub, series = "groundwater", "WELLINS", "SP"
+            pump_type = "kuyu (dalgıç)"
+        elif is_booster:
+            kc_app, kc_sub, series = "booster", "BOOSPUMP", "CR"
+            pump_type = "terfi/booster"
+        else:
+            kc_app, kc_sub, series = None, None, None
+            pump_type = f"belirsiz (nView={found_node.get('nView')})"
+
+        prefix = found_cfg.tool_prefix
+
+        return {
+            "selected_instance": found_cfg.instance_id,
+            "selected_tool_prefix": prefix,
+            "node": {
+                "id": nid,
+                "nName": found_node.get("nName"),
+                "nView": found_node.get("nView"),
+                "nType": found_node.get("nType"),
+            },
+            "pump_type": pump_type,
+            "pump_series_hint": series,
+            "korucaps_app": kc_app,
+            "korucaps_sub_app": kc_sub,
+            "next_action": (
+                f"{prefix}prepare_pump_selection(nodeId={nid})"
+            ),
+            "hint_tr": (
+                f"Node {nid} → {found_cfg.instance_id} instance'ında bulundu. "
+                f"Pompa tipi: {pump_type}. Şimdi next_action'ı çağır — "
+                f"canlı Q/H alıp korucaps_search_pumps'a verecek."
+            ),
+        }
 
     @mcp.tool(name="list_scada_instances")
     def list_scada_instances() -> Any:

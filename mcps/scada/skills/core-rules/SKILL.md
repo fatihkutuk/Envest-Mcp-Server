@@ -125,6 +125,47 @@ Kullanici bir node icin pompa secimi istediginde:
    - `Pompa1StartStopDurumu == 1` veya `PompaCalismaDurumu == 1` olmali
    - Durdugunda `Hm` ve `Debi` **guvenilmez** (dinamik degerler akis gerektirir)
    - Durmusken → loglardan calistigi bir donem bul → `<prefix>_get_node_log_data` ile dogrula
+### Mevcut Pompa Bilgisi ("kendi pompası ne")
+
+Kullanici "bu noktanin kendi pompasi ne", "takili pompa nedir" dediginde:
+
+```
+<prefix>_get_installed_pump_info(nodeId)
+```
+
+Bu tool **iki kaynagi** birden okur ve oncelik sirasiyla doner:
+
+1. **`pump_eff` tablosu** (kbindb): marka, model, motor_brand, nominal Q/H, motor_power,
+   **`annexa` yaslanma katsayisi**, montage tarihi, note. Bu tablo varsa ONCELIK.
+2. **`node_param` np_\* keys**: `np_PompaMarka`, `np_PompaModel`, `np_PompaDebi`, `np_PompaHm`,
+   `np_PompaGuc`, `np_PompaTip`, `np_SurucuGuc`, `np_SurucuModel`, `np_PompaCap`, `nPMontaj` (montaj derinligi).
+
+**annexa katsayisi ne?**
+- `annexa = 1` → pompa nominal (yeni gibi)
+- `annexa < 1` → pompa **yaslanmis/aşinmis**, Q-H egrisi asagi kaymis
+- Frekans projeksiyonunda: `H_gercek = H_katalog × annexa` uygula.
+- Ornek: annexa=0.85 → pompa nominal H'nin %85'ini veriyor.
+
+**annexa KULLANICIYA NE ZAMAN SUNULUR?**
+- **Sadece** ölçüm ile etiket arasında belirgin sapma olduğunda açıklama amaçlı:
+  _"Etiket 100 m3/h diyor ama sistem 95 veriyor — annexa=0.94 tolerans normaldir"_
+- **Frekans projeksiyonu / sürücü hesabı / pompa değişikliği** sorulduğunda hesap gereği
+- Normal "kendi pompası ne" sorusunda annexa **gösterilmez** — arka planda tutulur.
+- Her seferinde "pompa %6 aşınmış" gibi değil — sadece gerektiğinde.
+
+### Frekans Projeksiyonu (VFD ile "X Hz'de ne olur?")
+
+Kullanici "bu pompayi 40 Hz'de calistirsam ne olur" dediginde:
+
+**YASAK:** Saf Affinity Laws (Q∝f, H∝f²) ile projeksiyon yapmak.
+**SEBEP:** `ToplamHm` CANLI olcum — **sistem direnci zaten iceriyor**. Pompanin izole Q-H egrisinin o noktasi DEGIL.
+
+**DOGRU:** Sistem egrisi (H_static + k·Q²) kalibre et → yeni pompa egrisi (f2'ye Affinity ile olceklenmis) ∩ sistem egrisi = gercek yeni is noktasi.
+
+Detay: `get_skill('korubin-scada', 'analysis/pump-frequency-projection.md')` — adim adim doğru projeksiyon yontemi.
+
+---
+
 6. **Formulle cross-check (ZORUNLU)**: Hem **giris** verisi hem **cikis** (secilen pompa) tutarli mi?
    - **Hidrolik guc**: `P_hid (kW) = (Q × H) / 367` (Q: m3/h, H: metre — saf su)
    - **Sonuc verimle tersten**: `P1_hesap = P_hid / η_toplam` — oneri `P1`'i ile karsilastir

@@ -223,6 +223,31 @@ def load_instance(instance_dir: Path) -> InstanceConfig:
         enabled = bool(auth_raw.get("enabled", True))
         admin_secret = str(auth_raw.get("admin_secret") or os.getenv("MCP_ADMIN_SECRET") or "").strip()
         token_secret = str(auth_raw.get("token_secret") or os.getenv("MCP_TOKEN_SECRET") or "").strip()
+        # Auto-provision a persistent per-instance download/signed-url secret if none configured.
+        # Stored at <instance_dir>/.download_secret (gitignore'de). Survives restarts,
+        # combined.py deploy'una ihtiyac duymaz — signed download URL'leri burada dogar.
+        if not token_secret:
+            secret_path = instance_dir / ".download_secret"
+            try:
+                if secret_path.exists():
+                    token_secret = secret_path.read_text(encoding="utf-8").strip()
+                if not token_secret:
+                    import secrets as _secrets
+                    token_secret = _secrets.token_hex(32)
+                    try:
+                        secret_path.write_text(token_secret, encoding="utf-8")
+                        # permissions: rw------ (Unix)
+                        try:
+                            import stat as _stat
+                            secret_path.chmod(_stat.S_IRUSR | _stat.S_IWUSR)
+                        except Exception:
+                            pass
+                    except Exception as _e:
+                        logger.warning("could not persist download secret: %s", _e)
+            except Exception as _e:
+                logger.warning("download_secret load failed for %s: %s", instance_id, _e)
+                import secrets as _secrets
+                token_secret = _secrets.token_hex(32)
         ttl = _opt_int(auth_raw, "token_ttl_sec", 900)
         auth_cfg = AuthConfig(
             enabled=enabled,

@@ -305,35 +305,20 @@ class ScadaNodesPack:
             if isinstance(out, dict) and "nodes" in out:
                 nodes_list = out.get("nodes") or []
                 if not nodes_list:
-                    # Bos sonuc: diger SCADA instance'larini dene uyarisi
                     out["hint_tr"] = (
-                        f"'{kw}' icin bu SCADA'da ({prefix.rstrip('_')}) sonuc bulunamadi. "
-                        "MULTI-INSTANCE SETUP: Eger bu merged MCP'de birden fazla SCADA varsa "
-                        "(orn. corumscada_, envestbulutkorubin_), MUTLAKA diger prefix'lerde de AYNI ARAMA'yi tekrarla. "
-                        "Ornek: corumscada_find_nodes_by_keywords bos dondurduyse, hemen "
-                        "envestbulutkorubin_find_nodes_by_keywords('{kw}') cagir. "
-                        "Hepsi bos dondurduyse kullaniciya bildir, tahmin yurutme."
+                        f"'{kw}' bu SCADA'da yok. Merged MCP'de diğer prefix'leri dene "
+                        "(find_node_everywhere tercih et). Hepsi boşsa kullanıcıya bildir."
                     )
-                    out["next_action_required"] = (
-                        "try_other_scada_instance_prefixes_before_asking_user"
-                    )
+                    out["next_action_required"] = "try_other_scada_instance_prefixes_before_asking_user"
                 else:
-                    out["hint_tr"] = (
-                        "İlk satırlar genelde en kısa ve en iyi isim eşleşmesidir; birden fazla satır varsa "
-                        "nName ve urun_tipi ile seçin (kuyu: genelde «Koru1000 Well» / nView a-kuyu-envest)."
-                    )
-                # Her node için nView'a bağlı skill önerisi — ayar/menü/çalışma modu soruları için
+                    out["hint_tr"] = "İlk satır genelde en iyi eşleşme. nName + urun_tipi ile seç."
                 for n in out.get("nodes", []):
                     nv = str(n.get("nView") or "")
                     if nv:
                         n["ekran_tipi_skill_path"] = f"screen-types/nview/{nv}.md"
-                out["ayar_ve_menu_soru_icin_sonraki_adim_tr"] = (
-                    "Kullanıcı 'ayar', 'çalışma modu', 'nereden ayarlayacağım', 'menü' gibi bir şey "
-                    "sorduysa: get_skill(skill_name='korubin-scada', file_path='screen-types/nview/<nView>.md') "
-                    "ile o nView'a özel skill dosyasını okuyun; içindeki 'Alt Menü Sayfaları' tablosunda "
-                    "hangi alt sayfanın hangi parametreleri ayarladığı yazar. Örn: 'çalışma modu' -> "
-                    "'calismamod' sayfası (XC_SabitMod* parametreleri). Canlı değer için ayrıca "
-                    "get_device_tag_values(tagNames=['XC_CalismaModu']) çağrılabilir."
+                out["ayar_menu_tr"] = (
+                    "Ayar/çalışma modu/menü sorusu: get_skill('korubin-scada', "
+                    "'screen-types/nview/<nView>.md')."
                 )
             return out
 
@@ -345,16 +330,9 @@ class ScadaNodesPack:
             anahtar_kelime: str = "",
             ara: str = "",
         ) -> str:
-            """Node arama (isim, nView, nType). nView alt dizgesi ve ürün tipi adı dahil aranır.
-
-            AYAR / MENÜ / ÇALIŞMA MODU soruları için iş akışı:
-            1) Bu tool ile node'u bul (nodeId + nView alırsın).
-            2) get_skill(skill_name='korubin-scada', file_path='screen-types/nview/<nView>.md')
-               ile o ekran tipinin 'Alt Menü Sayfaları' ve 'Arayüz Ayarları' tablolarını oku.
-            3) Canlı değer gerekiyorsa get_device_tag_values ile ilgili tag'i oku.
-            Bu akış search_product_manual / get_product_specs YOLU DEĞİLDİR — onlar cihaz kataloğu,
-            panel ayar menüsü değil.
-            """
+            """Node arama (isim, nView, nType, ürün tipi).
+Ayar/menü sorusu için: bu tool → nView al → get_skill('screen-types/nview/<nView>.md').
+search_product_manual/get_product_specs DEĞİL (onlar cihaz kataloğu)."""
             return guard(tool, _find_nodes_by_keywords_impl)(
                 keywords, nType, limit, anahtar_kelime, ara
             )
@@ -392,13 +370,8 @@ class ScadaNodesPack:
             nv = str(node.get("nView") or "")
             if nv:
                 node["ekran_tipi_skill_path"] = f"screen-types/nview/{nv}.md"
-                node["ekran_tipi_skill_yonlendirme_tr"] = (
-                    f"Bu node ekran tipi '{nv}'. Ayar/menü/konfigürasyon sorusu için: "
-                    f"get_skill(skill_name='korubin-scada', file_path='screen-types/nview/{nv}.md') "
-                    "çağırın. Skill dosyasının 'Alt Menü Sayfaları' tablosunda hangi alt sayfa hangi "
-                    "parametreleri düzenliyor açık yazar (ör. calismamod -> XC_SabitMod*, "
-                    "emniyet -> XE_*, sensor -> XS_* vb.). 'Arayüz Ayarları' tablosu ui_* bayraklarıyla "
-                    "hangi tag'in aktif olduğunu gösterir."
+                node["ayar_skill_tr"] = (
+                    f"Ayar sorusu için: get_skill('korubin-scada', 'screen-types/nview/{nv}.md')."
                 )
 
             # Pompa secimi icin KRITIK uyari — nView'a gore pompa ailesi + canli tag zorunlulugu
@@ -407,28 +380,17 @@ class ScadaNodesPack:
             is_well = ("kuyu" in nv_l) or ("kuyu" in nname_l) or ("well" in nv_l)
             is_booster = ("terfi" in nv_l) or ("terfi" in nname_l) or ("booster" in nv_l) or ("hidro" in nv_l)
             if is_well or is_booster or "depo" in nv_l or "dma" in nv_l:
-                node["pompa_secimi_kisa_yol_tr"] = (
-                    f"POMPA SECIMI ICIN TEK CAGRI YETER: "
-                    f"{prefix}prepare_pump_selection(nodeId={node.get('id')}). "
-                    "Bu tool canli tag'leri okur (ToplamHm merkez), formulle dogrular "
-                    "(P_hid = Q×H/367), hazir Q/H dondurur. Sonra next_action'i aynen cagir. "
-                    "get_device_tag_values / get_node_all_tags ile manuel uğrasma."
-                )
-                node["pompa_secimi_yasak_tr"] = (
-                    "BasincSensoru × 10.197 ile HM TURETME — bu hat basinci, kuyu derinligi "
-                    "+ surtunme iceremez. ToplamHm tag'ini DOGRUDAN oku. "
-                    "XD_BasmaYukseklik (ayar), np_PompaHm (katalog), XS_DebimetreMax (sensor tavani) "
-                    "YASAK — hicbiri canli olcum degildir."
+                node["pompa_secimi_tr"] = (
+                    f"Pompa seçimi: {prefix}prepare_pump_selection(nodeId={node.get('id')}). "
+                    "Tek çağrı → canlı tag + doğrulama + hazır Q/H + next_action. "
+                    "YASAK: XD_BasmaYukseklik, np_*, XS_*, BasincSensoru×10.197."
                 )
             return node
 
         @mcp.tool(name=tool)
         def get_node(nodeId: int) -> str:
-            """Tek node detayı (nView, nType, parametreler vb.). Panel şablon/menü için nView kritik alandır.
-
-            Çıktıda 'ekran_tipi_skill_path' varsa: get_skill ile o dosyayı mutlaka okuyun — içinde
-            bu ekran tipinin alt menüleri, ayar parametreleri, hangi tag nerede gibi tam referans var.
-            Bu, search_product_manual / get_product_specs YERİNE kullanılır (onlar cihaz kataloğu)."""
+            """Node detayı (nView, nType, parametreler). nView = panel şablon kilit alan.
+ekran_tipi_skill_path dönerse get_skill ile oku. search_product_manual YERİNE."""
             return guard(tool, _get_node_impl)(nodeId)
 
         # --- prepare_pump_selection ---
@@ -452,12 +414,21 @@ class ScadaNodesPack:
                 "An_Guc", "P1_Guc",
                 "YaklasikHidrolikVerim", "HidrolikVerim", "PompaVerim",
                 "SuSeviye", "StatikSuSeviye",
-                # VFD / surucu tespiti icin frekans tag'leri
-                "An_SebFrekans", "P1_Frekans", "Pompa1Frekans",
-                "PompaFrekans", "Frekans", "An_Frekans",
+                # VFD CIKIS frekans (gercek pompa donme frekansi) — oncelik sirasiyla:
+                "An_InvFrekans",         # en yaygin (a-kuyu-envest, a-terfi-envest...)
+                "An_InverterFrekans",    # OCP110 serisi
+                "Pompa1CikisFrekansDeger", "Pompa2CikisFrekansDeger",  # coklu pompa
+                "CikisFrekansDeger",     # pompa-test
+                "P1_Frekans", "Pompa1Frekans", "PompaFrekans", "Frekans", "An_Frekans",
+                # Sebeke (sebeke HZ — VFD DEGIL, sadece referans)
+                "An_SebFrekans",
+                # VFD setpoint/referans ayar (XC_/XINV_ = AYAR, olcum degil — tespit icin bakilir)
+                "XC_SabitFrekansDeger", "XINV_SurucuFrekans", "XINV_SurucuFrekansReferans",
+                # Sürücü varligi flag tag'leri (varsa)
                 "SurucuVar", "SurucuAktif",
             ]
 
+            installed_pump: dict[str, Any] | None = None
             with dbmod.connect(cfg.db) as conn:
                 with conn.cursor() as cur:
                     # Node
@@ -476,6 +447,67 @@ class ScadaNodesPack:
                         tuple([nid] + pump_tags),
                     )
                     tag_rows = {r["tagName"]: r for r in cur.fetchall()}
+                    # Mevcut pompa bilgisi — HER IKI kaynak birlesik
+                    pe_row: dict[str, Any] | None = None
+                    try:
+                        cur.execute(
+                            "SELECT brand, model, flow, hm, motor_power, pump_stage, "
+                            "pump_max_eff, motor_max_eff, annexa, montage "
+                            "FROM pump_eff WHERE nid = %s ORDER BY updateTime DESC LIMIT 1",
+                            (nid,),
+                        )
+                        pe_row = cur.fetchone()
+                    except Exception:
+                        pe_row = None
+                    cur.execute(
+                        "SELECT pKey, pVal FROM node_param WHERE nodeId = %s "
+                        "AND pKey IN ('np_PompaMarka','np_PompaModel','np_PompaDebi',"
+                        "'np_PompaHm','np_PompaGuc','np_PompaTip','np_PompaCap',"
+                        "'np_SurucuGuc','np_SurucuModel','np_KolonCap','np_KabloKesit',"
+                        "'np_Debimetre','nPMontaj','nPModel')",
+                        (nid,),
+                    )
+                    np_rows = {r["pKey"]: r["pVal"] for r in cur.fetchall()}
+                    def _s2(v: Any) -> Any:
+                        if v is None: return None
+                        if isinstance(v, str):
+                            v = v.strip()
+                            return v or None
+                        return v
+                    pe_b = _s2(pe_row.get("brand")) if pe_row else None
+                    pe_m = _s2(pe_row.get("model")) if pe_row else None
+                    np_b = _s2(np_rows.get("np_PompaMarka"))
+                    np_m = _s2(np_rows.get("np_PompaModel"))
+                    _generic = {"dalgıç pompa", "submersible", "genel", "generic", "pompa"}
+                    pe_m_generic = pe_m is not None and pe_m.lower() in _generic
+                    best_b = np_b or pe_b
+                    best_m = np_m if (np_m and (not pe_m or pe_m_generic)) else (pe_m or np_m)
+                    if best_b or best_m or pe_row or np_rows:
+                        installed_pump = {
+                            "marka": best_b,
+                            "model": best_m,
+                            "nominal_Q": (
+                                _s2(pe_row.get("flow")) if pe_row and pe_row.get("flow")
+                                else _s2(np_rows.get("np_PompaDebi"))
+                            ),
+                            "nominal_H": (
+                                _s2(pe_row.get("hm")) if pe_row and pe_row.get("hm")
+                                else _s2(np_rows.get("np_PompaHm"))
+                            ),
+                            "motor_kW": (
+                                _s2(pe_row.get("motor_power")) if pe_row and pe_row.get("motor_power")
+                                else _s2(np_rows.get("np_PompaGuc"))
+                            ),
+                            "kademe": _s2(pe_row.get("pump_stage")) if pe_row else None,
+                            "annexa": _s2(pe_row.get("annexa")) if pe_row else None,
+                            "montage": _s2(pe_row.get("montage")) if pe_row else None,
+                            "pompa_cap_inch": _s2(np_rows.get("np_PompaCap")),
+                            "surucu_model": _s2(np_rows.get("np_SurucuModel")),
+                            "surucu_kW": _s2(np_rows.get("np_SurucuGuc")),
+                            "kolon_cap_mm": _s2(np_rows.get("np_KolonCap")),
+                            "montaj_derinlik_m": _s2(np_rows.get("nPMontaj")),
+                        }
+                        installed_pump = {k: v for k, v in installed_pump.items() if v is not None}
 
             def _num(name: str) -> float | None:
                 r = tag_rows.get(name)
@@ -520,8 +552,40 @@ class ScadaNodesPack:
             ]
             running = any((v is not None and v > 0.5) for v in running_flags)
 
-            # Canli degerler — ToplamHm MERKEZ
-            head_m = _num("ToplamHm")
+            # Canli degerler — ToplamHm MERKEZ (raw _tagoku degeri)
+            head_m_raw = _num("ToplamHm")
+            # UI'da toplamHm bazi nView'larda JS formuluyle hesaplaniyor:
+            # typical: BasincSensoru * 10.197 + SuSeviye (+ varsa XD_BasmaYukseklik)
+            basinc_bar = _num("BasincSensoru")
+            su_seviye_tag = _num("SuSeviye") or _num("DinamikSeviye") or _num("dinamikseviye")
+            xd_basma = _num("XD_BasmaYukseklik")
+            head_m_computed: float | None = None
+            head_m_formula: str | None = None
+            if basinc_bar is not None:
+                comp = basinc_bar * 10.197
+                parts = [f"BasincSensoru({basinc_bar})×10.197={round(comp,2)}"]
+                if su_seviye_tag is not None:
+                    comp += su_seviye_tag
+                    parts.append(f"+SuSeviye({su_seviye_tag})")
+                if xd_basma is not None:
+                    comp += xd_basma
+                    parts.append(f"+XD_BasmaYukseklik({xd_basma})")
+                head_m_computed = round(comp, 2)
+                head_m_formula = " ".join(parts) + f" = {head_m_computed}"
+
+            # Kullanilacak deger: raw varsa oncelikle onu (DB _tagoku sunucu tarafi),
+            # yoksa hesaplanmis fallback. Ikisi farkliysa uyar.
+            head_m = head_m_raw if head_m_raw is not None else head_m_computed
+            head_m_mismatch: dict[str, Any] | None = None
+            if (head_m_raw is not None and head_m_computed is not None
+                    and abs(head_m_raw - head_m_computed) > max(1.0, 0.05 * abs(head_m_raw))):
+                head_m_mismatch = {
+                    "raw": head_m_raw, "computed": head_m_computed,
+                    "fark_m": round(head_m_raw - head_m_computed, 2),
+                    "formula": head_m_formula,
+                    "uyari_tr": "Raw ≠ hesap. UI JS farklı olabilir, nView skill'ini güncelle.",
+                }
+
             flow = _num("Debimetre") or _num("Debimetre1")
             flow_ltsn = _num("DebimetreLtSn")
             if flow is None and flow_ltsn is not None:
@@ -529,38 +593,102 @@ class ScadaNodesPack:
             power_kw = _num("An_Guc") or _num("P1_Guc")
             eta_hyd = _num("YaklasikHidrolikVerim") or _num("HidrolikVerim") or _num("PompaVerim")
 
-            # VFD / surucu tespiti — frekans tag'i varsa ve 50 Hz disindaysa VFD aktif
-            freq_candidates = [
-                ("An_SebFrekans", _num("An_SebFrekans")),
+            # UI'daki 'hidrolikVerim' ve 'sistemVerim' JS ile hesaplanir.
+            # Typical formul: hidrolikVerim(%) = (Q*H/367) / P1_kW * 100
+            #                 sistemVerim(%) = hidrolikVerim * motor_verim_faktoru (~0.85)
+            # Her nView'da kesin formul farkli olabilir — burada best-effort hesap donulur,
+            # UI degeriyle tutmazsa kullaniciya panel JS formulunu paylasmasi soylenir.
+            ui_computed: dict[str, Any] = {}
+            if flow and head_m and power_kw and power_kw > 0:
+                p_hid = (flow * head_m) / 367.0
+                hid_verim = round((p_hid / power_kw) * 100.0, 2)
+                ui_computed["hidrolikVerim_computed_pct"] = hid_verim
+                ui_computed["sistemVerim_computed_pct"] = round(hid_verim * 0.85, 2)
+                ui_computed["formul"] = "P_hid=Q*H/367; η_hid=P_hid/P1*100; η_sys≈η_hid*0.85"
+                ui_computed["uyari_tr"] = "UI JS farklı olabilir, karşılaştır."
+
+            # VFD / surucu tespiti — CIKIS frekans tag'i VFD varligi demektir.
+            # Oncelik: An_InvFrekans > An_InverterFrekans > Pompa1CikisFrekansDeger
+            # > CikisFrekansDeger > P1_Frekans/Pompa1Frekans/...
+            # An_SebFrekans SEBEKE frekansidir — tek basina VFD gostermez.
+            vfd_output_freq_tags = [
+                ("An_InvFrekans", _num("An_InvFrekans")),
+                ("An_InverterFrekans", _num("An_InverterFrekans")),
+                ("Pompa1CikisFrekansDeger", _num("Pompa1CikisFrekansDeger")),
+                ("Pompa2CikisFrekansDeger", _num("Pompa2CikisFrekansDeger")),
+                ("CikisFrekansDeger", _num("CikisFrekansDeger")),
                 ("P1_Frekans", _num("P1_Frekans")),
                 ("Pompa1Frekans", _num("Pompa1Frekans")),
                 ("PompaFrekans", _num("PompaFrekans")),
                 ("Frekans", _num("Frekans")),
                 ("An_Frekans", _num("An_Frekans")),
             ]
-            freq_tags_present = [name for name, v in freq_candidates if v is not None]
-            freq_val = next((v for _, v in freq_candidates if v is not None), None)
+            vfd_setpoint_tags = [
+                ("XC_SabitFrekansDeger", _num("XC_SabitFrekansDeger")),
+                ("XINV_SurucuFrekans", _num("XINV_SurucuFrekans")),
+                ("XINV_SurucuFrekansReferans", _num("XINV_SurucuFrekansReferans")),
+            ]
+            sebeke_freq = _num("An_SebFrekans")
             surucu_flag = _num("SurucuVar") or _num("SurucuAktif")
-            # Heuristik: An_SebFrekans "sebeke" frekansidir (genelde 50Hz sabit) —
-            # tek basina VFD gostermez. Pompa-ozgu frekans (P1_Frekans, PompaFrekans)
-            # 50'den farkliysa VFD aktif demektir.
-            pump_freq = (
-                _num("P1_Frekans") or _num("Pompa1Frekans")
-                or _num("PompaFrekans") or _num("Frekans")
-            )
+
+            # Canli cikis frekansi — pompa gercek donme frekansi
+            pump_output_freq: float | None = None
+            pump_output_freq_tag: str | None = None
+            for name, v in vfd_output_freq_tags:
+                if v is not None and v > 0:
+                    pump_output_freq = v
+                    pump_output_freq_tag = name
+                    break
+
+            # VFD setpoint (ayar) — varligi VFD'yi kanitlar
+            vfd_setpoint: float | None = None
+            vfd_setpoint_tag: str | None = None
+            for name, v in vfd_setpoint_tags:
+                if v is not None:
+                    vfd_setpoint = v
+                    vfd_setpoint_tag = name
+                    break
+
+            # Mevcut tum freq tag'leri (raporlama icin)
+            freq_tags_present = [
+                name for name, v in (vfd_output_freq_tags + vfd_setpoint_tags)
+                if v is not None
+            ]
+            if sebeke_freq is not None:
+                freq_tags_present.append("An_SebFrekans")
+
+            # Karar mantigi:
             if surucu_flag is not None:
                 vfd_detected: bool | None = bool(surucu_flag > 0.5)
-                vfd_source = "SurucuVar/SurucuAktif tag'i"
-            elif pump_freq is not None:
-                vfd_detected = True  # pompa frekans tag'i varsa surucu vardir
-                vfd_source = f"pompa frekans tag'i ({pump_freq} Hz) mevcut"
-            else:
-                vfd_detected = None  # belirsiz
+                vfd_source = "SurucuVar/SurucuAktif tag'i (acik flag)"
+            elif pump_output_freq is not None:
+                vfd_detected = True
                 vfd_source = (
-                    "Sistemde frekans veya surucu tag'i bulunamadi — "
+                    f"VFD cikis frekans tag'i '{pump_output_freq_tag}' = {pump_output_freq} Hz "
+                    "mevcut -> surucu var"
+                )
+            elif vfd_setpoint_tag is not None:
+                vfd_detected = True
+                vfd_source = (
+                    f"VFD setpoint tag'i '{vfd_setpoint_tag}' = {vfd_setpoint} mevcut "
+                    "-> surucu var (ama cikis tag'i okunamiyor)"
+                )
+            elif sebeke_freq is not None:
+                vfd_detected = None
+                vfd_source = (
+                    "Sadece 'An_SebFrekans' (sebeke) var — bu VFD olcumu DEGIL. "
+                    "Surucu varligi belirsiz; sahada teyit gerek."
+                )
+            else:
+                vfd_detected = None
+                vfd_source = (
+                    "Hic frekans/surucu tag'i bulunamadi — "
                     "VFD varligi tag'lardan kesinlenemedi. "
                     "Kullaniciya saha durumu teyit ettirilmeli."
                 )
+
+            # pump_freq geriye-uyumluluk (onceki kodda kullanilan isim) — yeni isim:
+            pump_freq = pump_output_freq
 
             # Formulle cross-check: P_hid = (Q × H) / 367 (m3/h, m, kW icin)
             checks: list[dict[str, Any]] = []
@@ -629,28 +757,15 @@ class ScadaNodesPack:
                     ),
                 })
 
+            # Tıraşlı çark = torna ile çapı küçültülmüş, sabit iş noktasına uyarlanmış (isim sonu N).
             if vfd_detected is True:
-                impeller_kural_tr = (
-                    "Sistemde SURUCU/VFD VAR → TAM CAPLI (standart) pompa tercih et. "
-                    "Tirasli fanli (isim sonunda N ornegin 'SP 125-8-AAN') pompadan kacin. "
-                    "Surucu frekans dusurerek debiyi ayarlayabilir, tirasliya gerek yok. "
-                    "Istisna: Surucu ile istenen noktaya ulasilamiyorsa tirasliya donulur."
-                )
-                korucaps_prefer_impeller = "full"
+                impeller_kural_tr = "VFD VAR → standart çark tercih. Tıraşlı (N) = esneklik kaybı."
+                korucaps_prefer_impeller = "standart"
             elif vfd_detected is False:
-                impeller_kural_tr = (
-                    "Sistemde SURUCU/VFD YOK → Hem tam capli hem tirasli fanli pompa uygun. "
-                    "Hangi seri calisma noktasina daha iyi oturuyorsa o secilir. "
-                    "Tirasli fan (N ile biten, orn 'SP 125-8-AAN') daha esnek H ayarina izin verir."
-                )
+                impeller_kural_tr = "VFD YOK → sabit iş noktasında tıraşlı (N) daha verimli, standart da uygun."
                 korucaps_prefer_impeller = "any"
             else:
-                impeller_kural_tr = (
-                    "VFD varligi BELIRSIZ — tag'lardan tespit edilemedi. "
-                    "Hem tam capli hem tirasli fanli sonuclari kullaniciya sun, "
-                    "farkini anlat (tirasli = impelleri kuculup H/Q ayari, tam capli = standart). "
-                    "Kullaniciya 'sahada sürücü var mi?' diye sor."
-                )
+                impeller_kural_tr = "VFD belirsiz → her iki seçeneği sun, kullanıcıya sor."
                 korucaps_prefer_impeller = "any"
 
             result: dict[str, Any] = {
@@ -661,14 +776,25 @@ class ScadaNodesPack:
                 "running": running,
                 "canli_olcumler": {
                     "ToplamHm_m": head_m,
+                    "ToplamHm_raw_tag": head_m_raw,
+                    "ToplamHm_computed": head_m_computed,
+                    "ToplamHm_formula_debug": head_m_formula,
                     "Debimetre_m3h": flow,
                     "An_Guc_kW": power_kw,
                     "YaklasikHidrolikVerim": eta_hyd,
                     "BasincSensoru_bar": _num("BasincSensoru"),
                     "HatBasincSensoru_bar": _num("HatBasincSensoru"),
-                    "pompa_frekans_Hz": pump_freq,
-                    "sebeke_frekans_Hz": _num("An_SebFrekans"),
+                    "SuSeviye_m": su_seviye_tag,
+                    "XD_BasmaYukseklik_m": xd_basma,
+                    "pompa_cikis_frekans_Hz": pump_freq,
+                    "pompa_cikis_frekans_tag": pump_output_freq_tag,
+                    "sebeke_frekans_Hz": sebeke_freq,
+                    "vfd_setpoint": vfd_setpoint,
+                    "vfd_setpoint_tag": vfd_setpoint_tag,
                 },
+                "ui_hesaplanmis": ui_computed,
+                "toplam_hm_mismatch": head_m_mismatch,
+                "mevcut_pompa": installed_pump,
                 "hesaplamalar": {
                     "P_hidrolik_hesap_kW": p_hyd_calc,
                     "P1_beklenen_kW": p1_expected,
@@ -695,66 +821,304 @@ class ScadaNodesPack:
                 "hazir": bool(flow and head_m and running and not any(c["severity"] == "HIGH" for c in checks)),
             }
 
+            # Mevcut pompa bilgisi varsa kısa özet (annexa gösterilmez, iç hesapta)
+            ip_summary = ""
+            if installed_pump:
+                ip_parts = []
+                if installed_pump.get("marka") and installed_pump.get("model"):
+                    ip_parts.append(f"{installed_pump['marka']} {installed_pump['model']}")
+                if installed_pump.get("nominal_Q") and installed_pump.get("nominal_H"):
+                    ip_parts.append(f"Nominal Q={installed_pump['nominal_Q']} H={installed_pump['nominal_H']}")
+                if installed_pump.get("motor_kW"):
+                    ip_parts.append(f"{installed_pump['motor_kW']}kW")
+                if installed_pump.get("kademe"):
+                    ip_parts.append(f"{installed_pump['kademe']} kademe")
+                if ip_parts:
+                    ip_summary = " | TAKILI: " + " ".join(ip_parts)
+
             if result["hazir"]:
                 vfd_param = "true" if vfd_detected is True else "false"
                 result["next_action"] = (
                     f"korucaps_search_pumps(flow_m3h={flow}, head_m={head_m}, "
                     f"application='{kc_app}', sub_application='{kc_sub}', vfd={vfd_param})"
                 )
-                impeller_uyari = ""
                 if vfd_detected is True:
-                    impeller_uyari = (
-                        " SUNARKEN: Sistemde VFD VAR — TAM CAPLI (isim sonunda N olmayan) "
-                        "pompalari on-plana cikar, tirasli (N ile biten) alternatifleri "
-                        "'surucu yoksa secenek' olarak ikinci sirada goster."
-                    )
+                    _imp = " VFD var → standart öne."
                 elif vfd_detected is False:
-                    impeller_uyari = (
-                        " SUNARKEN: Sistemde VFD YOK — tam capli ve tirasli (N) seceneklerin"
-                        " ikisini de sun, farkini kisaca anlat (tirasli = kuculmus impeller,"
-                        " daha esnek H/Q ayari)."
-                    )
+                    _imp = " VFD yok → her ikisi uygun."
                 else:
-                    impeller_uyari = (
-                        " SUNARKEN: VFD varligi BELIRSIZ — kullaniciya 'sahada surucu var mi?'"
-                        " diye sor. Cevaba gore tam capli veya tirasli (N) secenegi oner."
-                    )
+                    _imp = " VFD belirsiz → kullanıcıya sor."
                 result["hint_tr"] = (
-                    "Veriler tutarli. Yukaridaki next_action komutunu AYNEN calistir. "
-                    "Degerleri YUVARLAMA, hesaplari TEKRAR yapma." + impeller_uyari
+                    "Tutarlı. next_action'ı aynen çağır. Yuvarlama yok."
+                    + _imp + ip_summary
+                    + " | KULLANICIYA mevcut_pompa alanındaki TÜM detayı göster (marka, model, Q, H, motor, kademe, sürücü, montaj)."
                 )
             else:
                 highs = [c for c in checks if c["severity"] == "HIGH"]
                 if highs:
                     result["next_action"] = "stop_and_resolve_checks"
                     result["hint_tr"] = (
-                        "DURUM KRITIK — checks listesinde HIGH severity sorunlar var. "
-                        "korucaps_search_pumps CAGIRMA. Once sorunlari kullaniciya bildir veya "
-                        "eksik tag'leri tamamla. Ozellikle ToplamHm bulunamadiysa, "
-                        "BasincSensoru'ndan HM TURETME."
+                        "KRİTİK: checks içinde HIGH var. search_pumps çağırma, kullanıcıya bildir."
+                        + ip_summary
                     )
                 else:
-                    result["hint_tr"] = (
-                        "Uyarilar var ama kritik degil. Yine de kullaniciya teyit ederek ilerle."
-                    )
+                    result["hint_tr"] = "Uyarı var, teyit alarak ilerle." + ip_summary
             return result
 
         @mcp.tool(name=tool)
         def prepare_pump_selection(nodeId: int) -> str:
-            """Pompa secimi icin TEK ADIMDA hersey: canli tag okuma + formulle dogrulama + hazir Q/H.
-
-            KULLANIM: Kullanici bir node icin pompa secimi istediginde:
-            1) find_node_everywhere ile node'u bul
-            2) <prefix>_prepare_pump_selection(nodeId) -> CANLI Hm, Debi, guc, verim + tutarlilik check
-            3) Response'ta 'hazir=true' ve 'next_action' varsa O KOMUTU AYNEN cagir
-            4) 'checks' icinde HIGH varsa DURDURUK kullaniciya bildir
-
-            ToplamHm bulamazsa BasincSensoru'ndan HM TURETME — cunki bu sadece hat basinci,
-            kuyu derinligi + surtunme icermez. Yanlis H -> yanlis pompa.
-
-            Formulle dogrular: P_hid = (Q × H) / 367, P1 = P_hid / η. An_Guc ile tutarsiz ise alarm.
-            """
+            """Pompa seçimi tek adımda: canlı tag + doğrulama + hazır Q/H.
+Kullanım: find_node_everywhere → prepare_pump_selection(nodeId) → response'ta hazır=true ise
+next_action'ı aynen çağır. checks'de HIGH varsa kullanıcıya bildir, devam etme.
+ToplamHm yoksa BasincSensoru×10.197 ile TÜRETME. Formül: P_hid=Q×H/367."""
             return guard(tool, _prepare_pump_selection_impl)(nodeId)
+
+        # --- analyze_pump_at_frequency ---
+        # Mevcut canli is noktasindan hareketle, hedef frekansta ne olacagini
+        # SISTEM EGRISI modeliyle tahmin eder. Saf Affinity Laws DEGIL.
+        tool = prefixed_name(prefix, "analyze_pump_at_frequency")
+
+        def _analyze_pump_at_frequency_impl(
+            nodeId: int,
+            target_freq_hz: float,
+            current_freq_hz: float = 0.0,
+            h_static_m: float = 0.0,
+            annexa: float = 0.0,
+        ) -> Any:
+            """Sistem egrisi kalibrasyonu ile frekans projeksiyonu.
+
+            H_sys(Q) = H_static + k·Q²
+            Mevcut (Q1, H1) ile k kalibre edilir → yeni pompa egrisi (f2, annexa) ile kesisim bulunur.
+            annexa < 1 ise pompa yaslanmis, egri asagi kayar.
+            """
+            if not cfg.db:
+                raise RuntimeError("DB config is missing for this instance.")
+
+            # 1) Mevcut canli noktayi al
+            nid = int(nodeId)
+            pump_tags = [
+                "ToplamHm", "Debimetre", "Debimetre1", "DebimetreLtSn",
+                "An_Guc", "P1_Guc",
+                "YaklasikHidrolikVerim", "HidrolikVerim", "PompaVerim",
+                "P1_Frekans", "Pompa1Frekans", "PompaFrekans", "Frekans", "An_Frekans",
+                "Pompa1StartStopDurumu", "PompaStartStopDurumu", "PompaCalismaDurumu",
+                "SuSeviye", "StatikSuSeviye",
+            ]
+            with dbmod.connect(cfg.db) as conn:
+                with conn.cursor() as cur:
+                    placeholders = ",".join(["%s"] * len(pump_tags))
+                    cur.execute(
+                        f"SELECT tagName, tagValue FROM _tagoku "
+                        f"WHERE devId = %s AND tagName IN ({placeholders})",
+                        tuple([nid] + pump_tags),
+                    )
+                    tag_rows = {r["tagName"]: r for r in cur.fetchall()}
+
+            def _num(name: str) -> float | None:
+                r = tag_rows.get(name)
+                if not r:
+                    return None
+                try:
+                    return float(r["tagValue"])
+                except (TypeError, ValueError):
+                    return None
+
+            q1 = _num("Debimetre") or _num("Debimetre1")
+            if q1 is None:
+                ltsn = _num("DebimetreLtSn")
+                if ltsn is not None:
+                    q1 = ltsn * 3.6
+            h1 = _num("ToplamHm")
+            p1_kw = _num("An_Guc") or _num("P1_Guc")
+            eta_live = _num("YaklasikHidrolikVerim") or _num("HidrolikVerim") or _num("PompaVerim")
+            f1_live = (
+                _num("P1_Frekans") or _num("Pompa1Frekans")
+                or _num("PompaFrekans") or _num("Frekans") or _num("An_Frekans")
+            )
+            running = any(
+                (v is not None and v > 0.5)
+                for v in (
+                    _num("Pompa1StartStopDurumu"),
+                    _num("PompaStartStopDurumu"),
+                    _num("PompaCalismaDurumu"),
+                )
+            )
+
+            f1 = float(current_freq_hz) if current_freq_hz and current_freq_hz > 0 else (f1_live or 50.0)
+            f2 = float(target_freq_hz)
+            if f2 <= 0 or f2 > 65:
+                return {"error": "target_freq_hz gecersiz (0 < f <= 65)."}
+
+            checks: list[dict[str, Any]] = []
+            if not running:
+                checks.append({
+                    "severity": "HIGH",
+                    "issue": "pompa_durmus",
+                    "detail": (
+                        "Pompa durmus — canli Q, H guvenilmez. "
+                        "Calisma donemindeki (log) degerle tekrar dene."
+                    ),
+                })
+            if q1 is None or h1 is None or q1 <= 0 or h1 <= 0:
+                return {
+                    "error": "Canli Q (Debimetre) veya H (ToplamHm) alinamadi.",
+                    "debimetre_m3h": q1, "toplam_hm_m": h1,
+                    "hint_tr": "prepare_pump_selection ile durumu teyit et.",
+                }
+
+            # 2) H_static tahmini
+            # Kullanici verdiyse onu kullan, yoksa SuSeviye (dinamik kuyu seviyesi) bakar,
+            # yoksa H1'in %25'i ile baslanir (yaygin varsayim).
+            if h_static_m and h_static_m > 0:
+                h_static = float(h_static_m)
+                h_static_source = "user_param"
+            else:
+                su_seviye = _num("SuSeviye") or _num("StatikSuSeviye")
+                if su_seviye is not None and 0 < su_seviye < h1:
+                    h_static = float(su_seviye)
+                    h_static_source = "SuSeviye/StatikSuSeviye canli tag"
+                else:
+                    h_static = round(h1 * 0.25, 2)
+                    h_static_source = "varsayilan (H1 * 0.25)"
+
+            if h_static >= h1:
+                return {
+                    "error": "H_static >= H1 — sistem modeli gecersiz.",
+                    "h_static_m": h_static, "h1_m": h1,
+                    "hint_tr": "h_static_m parametresiyle manuel ver veya log'dan kalibre et.",
+                }
+
+            # 3) Sistem egrisi: H_sys(Q) = H_static + k·Q²
+            k = (h1 - h_static) / (q1 * q1)
+
+            # 4) Pompa egrisi modeli
+            # annexa: pompa yaslanma katsayisi (1 = nominal, <1 = asinmis)
+            # Otomatik oku: pump_eff tablosu varsa annexa oradan, yoksa kullanici parametresi
+            annexa_used = float(annexa) if annexa and annexa > 0 else 1.0
+            annexa_source = "user_param"
+            if not (annexa and annexa > 0):
+                try:
+                    with dbmod.connect(cfg.db) as conn2:
+                        with conn2.cursor() as cur2:
+                            cur2.execute(
+                                "SELECT annexa FROM pump_eff WHERE nid = %s "
+                                "ORDER BY updateTime DESC LIMIT 1",
+                                (nid,),
+                            )
+                            row = cur2.fetchone()
+                            if row and row.get("annexa") is not None:
+                                annexa_used = float(row["annexa"])
+                                annexa_source = "pump_eff_table"
+                except Exception:
+                    pass
+
+            ratio = f2 / f1
+            q_pump_at_f2_nominal = q1 * ratio                             # Q ∝ f
+            h_pump_at_f2_nominal = h1 * ratio * ratio * annexa_used       # H ∝ f² × annexa
+
+            # Pompa Q-H egrisini yerel olarak lineerleştir:
+            # dH/dQ ≈ -2 * (H_pump_nominal - H_static_f2) / Q_nominal
+            # (basit varsayım: BEP civarında yaklaşım)
+            # Daha doğru için: 3 nokta ile fit; burada tek nokta var.
+            # Yaklaşım: pompa egrisi egimi -(H1/Q1) civarında.
+            slope_pump_f1 = -h1 / q1  # m / (m3/h)
+            slope_pump_f2 = slope_pump_f1  # affinity'de egim ~ sabit (Q∝f, H∝f²)
+
+            # Pompa egrisi f2: H_pump(Q) = H_pump_nominal + slope*(Q - Q_nominal)
+            # Sistem egrisi: H_sys(Q) = H_static + k·Q²
+            # Kesişim: h_pump_nominal + slope*(Q - q_nom) = h_static + k·Q²
+            # → k·Q² - slope·Q + (h_static - h_pump_nominal + slope*q_nom) = 0
+            a_q = k
+            b_q = -slope_pump_f2
+            c_q = h_static - h_pump_at_f2_nominal + slope_pump_f2 * q_pump_at_f2_nominal
+
+            disc = b_q * b_q - 4 * a_q * c_q
+            if disc < 0 or a_q <= 0:
+                return {
+                    "error": "Sistem/pompa kesisimi cozulemedi (discriminant < 0).",
+                    "hint_tr": "h_static_m degerini manuel ver veya daha fazla log noktasi topla.",
+                    "debug": {"a": a_q, "b": b_q, "c": c_q, "disc": disc},
+                }
+            import math as _math
+            q2_a = (-b_q + _math.sqrt(disc)) / (2 * a_q)
+            q2_b = (-b_q - _math.sqrt(disc)) / (2 * a_q)
+            candidates = [x for x in (q2_a, q2_b) if x > 0]
+            if not candidates:
+                return {"error": "Pozitif Q2 cozumu bulunamadi."}
+            q2 = min(candidates, key=lambda x: abs(x - q_pump_at_f2_nominal))
+            h2 = h_static + k * q2 * q2
+
+            # Yeni güç tahmini
+            p_hyd2 = (q2 * h2) / 367.0
+            eta_use = eta_live if eta_live is not None else 60.0
+            if eta_use > 1.5:
+                eta_decimal = eta_use / 100.0
+            else:
+                eta_decimal = eta_use
+            p1_2 = p_hyd2 / max(eta_decimal, 0.1)
+
+            result = {
+                "node_id": nid,
+                "running": running,
+                "mevcut_nokta": {
+                    "frekans_Hz": round(f1, 2),
+                    "Q_m3h": round(q1, 2),
+                    "H_m": round(h1, 2),
+                    "P1_kW": round(p1_kw, 2) if p1_kw is not None else None,
+                    "verim_pct": round(eta_live, 1) if eta_live is not None else None,
+                },
+                "sistem_egrisi": {
+                    "H_static_m": round(h_static, 2),
+                    "H_static_kaynak": h_static_source,
+                    "k_coef": round(k, 6),
+                    "formul": "H_sys(Q) = H_static + k·Q²",
+                },
+                "hedef_frekans_Hz": f2,
+                "tahmin_yeni_nokta": {
+                    "Q2_m3h": round(q2, 2),
+                    "H2_m": round(h2, 2),
+                    "P_hidrolik_kW": round(p_hyd2, 2),
+                    "P1_tahmin_kW": round(p1_2, 2),
+                    "verim_varsayim_pct": round(eta_use, 1),
+                },
+                "affinity_sadece_pompa": {
+                    "Q_m3h": round(q_pump_at_f2_nominal, 2),
+                    "H_m": round(h_pump_at_f2_nominal, 2),
+                    "uyari": "NAİF affinity + annexa (referans). Gerçek: tahmin_yeni_nokta.",
+                },
+                "annexa": {
+                    "value": annexa_used,
+                    "source": annexa_source,
+                    "aciklama": (
+                        "H_pump = H_nominal × annexa (pompa yaşlanma katsayısı). "
+                        "Ölçüm-etiket arası sapmayı kapatmak için kullanılır. "
+                        "Bu HESAPTA kullanıldı; kullanıcıya sadece bu hesap için açıklayarak sun."
+                    ),
+                },
+                "belirsizlik_tr": (
+                    f"±%10-15. H_static kaynak: {h_static_source}. "
+                    "Daha iyi: log'dan çok nokta topla, kalibre et."
+                ),
+                "checks": checks,
+            }
+            return result
+
+        @mcp.tool(name=tool)
+        def analyze_pump_at_frequency(
+            nodeId: int,
+            target_freq_hz: float,
+            current_freq_hz: float = 0.0,
+            h_static_m: float = 0.0,
+            annexa: float = 0.0,
+        ) -> str:
+            """Frekans projeksiyonu: hedef frekansta Q/H/P tahmini (sistem eğrisi + annexa).
+Saf Affinity DEĞİL — H_sys(Q)=H_static+k·Q² ∩ pompa eğrisi.
+annexa: pompa yaşlanma (1=nominal, <1=aşınmış). 0 → pump_eff'ten okunur, yoksa 1.0.
+current_freq_hz=0 → canlı tag. h_static_m=0 → SuSeviye veya 0.25·H1.
+Kullan: "X Hz'de ne olur", "en verimli frekans", "frekans düşürürsem debi"."""
+            return guard(tool, _analyze_pump_at_frequency_impl)(
+                nodeId, target_freq_hz, current_freq_hz, h_static_m, annexa,
+            )
 
         # --- list_product_types ---
         tool = prefixed_name(prefix, "list_product_types")
@@ -781,6 +1145,184 @@ class ScadaNodesPack:
         def list_product_types() -> str:
             """Ürün tipleri (node_product_type)."""
             return guard(tool, _list_product_types_impl)()
+
+        # --- get_installed_pump_info ---
+        # Node'a takili mevcut pompanin bilgisi — iki kaynak:
+        #   1) kbindb.pump_eff (marka, model, annexa yaslanma katsayisi, montage tarihi)
+        #   2) node_param np_* (catalog/etiket: np_PompaModel, np_PompaHm, np_PompaDebi, ...)
+        tool = prefixed_name(prefix, "get_installed_pump_info")
+
+        def _get_installed_pump_info_impl(nodeId: int) -> Any:
+            if not cfg.db:
+                raise RuntimeError("DB config is missing for this instance.")
+            nid = int(nodeId)
+            pump_eff_row = None
+            np_params: dict[str, Any] = {}
+            with dbmod.connect(cfg.db) as conn:
+                with conn.cursor() as cur:
+                    # pump_eff: en guncel kayit
+                    try:
+                        cur.execute(
+                            """
+                            SELECT id, brand, model, motor_brand, flow, flow_rate, hm,
+                                   pump_stage, motor_power, pump_max_eff, motor_max_eff,
+                                   annexa, montage, note, updateTime, createdTime
+                            FROM pump_eff
+                            WHERE nid = %s
+                            ORDER BY updateTime DESC, id DESC
+                            LIMIT 1
+                            """,
+                            (nid,),
+                        )
+                        pump_eff_row = cur.fetchone()
+                    except Exception as exc:
+                        pump_eff_row = {"error": f"pump_eff okunamadi: {type(exc).__name__}"}
+                    # node_param np_* ve nP* anahtarlari — known key listesi (SQL LIKE
+                    # underscore'u escape etmek yerine IN ile spesifik)
+                    known_keys = (
+                        "np_PompaMarka", "np_PompaModel", "np_PompaTip", "np_PompaCap",
+                        "np_PompaDebi", "np_PompaHm", "np_PompaGuc",
+                        "np_SurucuGuc", "np_SurucuModel", "np_SurucuMarka",
+                        "np_KolonCap", "np_KabloKesit", "np_Debimetre",
+                        "np_MotorMarka", "np_MotorModel", "np_MotorGuc",
+                        "np_NPSH", "np_Kademe", "np_BasmaDerinlik",
+                        "nPModel", "nPMontaj", "nPMontage", "nPSerial",
+                    )
+                    placeholders = ",".join(["%s"] * len(known_keys))
+                    cur.execute(
+                        f"SELECT pKey, pVal FROM node_param "
+                        f"WHERE nodeId = %s AND pKey IN ({placeholders})",
+                        tuple([nid] + list(known_keys)),
+                    )
+                    for r in cur.fetchall():
+                        np_params[r["pKey"]] = r["pVal"]
+
+            # annexa — ic hesaplama icin, kullaniciya her seferinde sunulmaz.
+            # Sadece sapma dogrulama ihtiyaci cikarsa (orn. frekans projeksiyonu) uyari olusur.
+            annexa_val = None
+            if isinstance(pump_eff_row, dict) and pump_eff_row.get("annexa") is not None:
+                try:
+                    annexa_val = float(pump_eff_row["annexa"])
+                except (TypeError, ValueError):
+                    pass
+
+            # Pompa bilgisini HER IKI kaynaktan da al ve BIRLESTIR.
+            # Spesifik alan tercihi: node_param genelde daha detayli (model no, surucu)
+            # pump_eff: annexa, motor_max_eff, montage — orada eşsiz.
+            def _s(v: Any) -> Any:
+                if v is None:
+                    return None
+                if isinstance(v, str):
+                    v = v.strip()
+                    return v or None
+                return v
+
+            pe_brand = _s(pump_eff_row.get("brand")) if isinstance(pump_eff_row, dict) else None
+            pe_model = _s(pump_eff_row.get("model")) if isinstance(pump_eff_row, dict) else None
+            np_brand = _s(np_params.get("np_PompaMarka"))
+            np_model = _s(np_params.get("np_PompaModel"))
+
+            # Eger pump_eff model'i generic ("Dalgıç Pompa" gibi) ise np_ tercih edilir
+            generic_keywords = {"dalgıç pompa", "submersible", "genel", "generic", "pompa"}
+            pe_model_is_generic = (
+                pe_model is not None
+                and pe_model.lower() in generic_keywords
+            )
+
+            best_brand = np_brand or pe_brand
+            best_model = np_model if (np_model and (not pe_model or pe_model_is_generic)) else (pe_model or np_model)
+
+            installed_summary: dict[str, Any] = {}
+            if best_brand or best_model or pump_eff_row or np_params:
+                installed_summary = {
+                    "kaynak": (
+                        "pump_eff + node_param" if (pump_eff_row and np_params)
+                        else ("pump_eff" if pump_eff_row else "node_param")
+                    ),
+                    "marka": best_brand,
+                    "model": best_model,
+                    "motor_marka": _s(pump_eff_row.get("motor_brand")) if isinstance(pump_eff_row, dict) else None,
+                    "nominal_Q_m3h": (
+                        _s(pump_eff_row.get("flow")) if isinstance(pump_eff_row, dict) and pump_eff_row.get("flow")
+                        else _s(np_params.get("np_PompaDebi"))
+                    ),
+                    "nominal_H_m": (
+                        _s(pump_eff_row.get("hm")) if isinstance(pump_eff_row, dict) and pump_eff_row.get("hm")
+                        else _s(np_params.get("np_PompaHm"))
+                    ),
+                    "motor_gucu_kW": (
+                        _s(pump_eff_row.get("motor_power")) if isinstance(pump_eff_row, dict) and pump_eff_row.get("motor_power")
+                        else _s(np_params.get("np_PompaGuc"))
+                    ),
+                    "pompa_kademe": _s(pump_eff_row.get("pump_stage")) if isinstance(pump_eff_row, dict) else None,
+                    "pompa_max_verim_pct": _s(pump_eff_row.get("pump_max_eff")) if isinstance(pump_eff_row, dict) else None,
+                    "motor_max_verim_pct": _s(pump_eff_row.get("motor_max_eff")) if isinstance(pump_eff_row, dict) else None,
+                    "annexa": annexa_val,
+                    "montage": _s(pump_eff_row.get("montage")) if isinstance(pump_eff_row, dict) else None,
+                    "note": _s(pump_eff_row.get("note")) if isinstance(pump_eff_row, dict) else None,
+                    # node_param'dan eşsiz alanlar
+                    "pompa_tip": _s(np_params.get("np_PompaTip")),
+                    "pompa_cap_inch": _s(np_params.get("np_PompaCap")),
+                    "surucu_guc_kW": _s(np_params.get("np_SurucuGuc")),
+                    "surucu_model": _s(np_params.get("np_SurucuModel")),
+                    "debimetre": _s(np_params.get("np_Debimetre")),
+                    "kablo_kesit": _s(np_params.get("np_KabloKesit")),
+                    "kolon_cap_mm": _s(np_params.get("np_KolonCap")),
+                    "montaj_derinlik_m": _s(np_params.get("nPMontaj")),
+                }
+                # None degerleri temizle (LLM'e daha sade gelsin)
+                installed_summary = {k: v for k, v in installed_summary.items() if v is not None}
+
+            result: dict[str, Any] = {
+                "node_id": nid,
+                "installed_pump": installed_summary or None,
+                "pump_eff_raw": pump_eff_row,
+                "node_param_np_keys": np_params,
+                # annexa iç hesap için — kullanıcıya her sefer gösterilmesin.
+                # Yalnızca frekans projeksiyonu / tutarsızlık doğrulamasında kullan.
+                "annexa_internal": annexa_val,
+            }
+            if not installed_summary:
+                result["hint_tr"] = (
+                    "Mevcut pompa bilgisi bulunamadi — ne pump_eff ne node_param. Kullaniciya bildir."
+                )
+            else:
+                # Kullanici sunumu icin detay listesi — annexa DAHIL DEGIL
+                parts: list[str] = []
+                if installed_summary.get("marka") and installed_summary.get("model"):
+                    parts.append(f"{installed_summary['marka']} {installed_summary['model']}")
+                elif installed_summary.get("model"):
+                    parts.append(str(installed_summary['model']))
+                if installed_summary.get("nominal_Q_m3h") and installed_summary.get("nominal_H_m"):
+                    parts.append(f"Q={installed_summary['nominal_Q_m3h']} m3/h, H={installed_summary['nominal_H_m']} m")
+                if installed_summary.get("motor_gucu_kW"):
+                    parts.append(f"Motor: {installed_summary['motor_gucu_kW']} kW")
+                if installed_summary.get("pompa_kademe"):
+                    parts.append(f"{installed_summary['pompa_kademe']} kademe")
+                if installed_summary.get("pompa_cap_inch"):
+                    parts.append(f"Çap: {installed_summary['pompa_cap_inch']}\"")
+                if installed_summary.get("surucu_model") and installed_summary.get("surucu_guc_kW"):
+                    parts.append(f"Sürücü: {installed_summary['surucu_model']} {installed_summary['surucu_guc_kW']} kW")
+                if installed_summary.get("montaj_derinlik_m"):
+                    parts.append(f"Montaj: {installed_summary['montaj_derinlik_m']} m")
+                if installed_summary.get("montage"):
+                    parts.append(f"Tarih: {installed_summary['montage']}")
+                summary_line = " | ".join(parts) if parts else "veri eksik"
+                result["hint_tr"] = (
+                    f"Mevcut pompa: {summary_line}. "
+                    "TÜM detayları kullanıcıya göster (marka, model, Q, H, motor, kademe, sürücü, montaj). "
+                    "annexa'yı kullanıcıya SADECE ölçüm ile etiket arasında sapma varsa veya frekans/pompa değişikliği hesabı sorulduğunda sun."
+                )
+            return result
+
+        @mcp.tool(name=tool)
+        def get_installed_pump_info(nodeId: int) -> str:
+            """Node'a takılı mevcut pompa bilgisi.
+Kaynak önceliği: pump_eff (marka, model, annexa yaşlanma katsayısı, montage) >
+node_param np_* (np_PompaModel, np_PompaMarka, np_PompaDebi, np_PompaHm, np_PompaGuc...).
+'kendi pompası ne', 'mevcut pompa ne', 'takılı pompa' sorularında kullan.
+annexa < 1 ise pompa yaşlanmış → H_gerçek = H_katalog × annexa."""
+            return guard(tool, _get_installed_pump_info_impl)(nodeId)
 
         # --- get_node_scada_context ---
         tool = prefixed_name(prefix, "get_node_scada_context")

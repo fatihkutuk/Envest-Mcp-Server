@@ -213,10 +213,9 @@ def file_payload(
                 pass
 
         out.pop("download_hint", None)
-        out["download_note"] = (
-            "Download: download_url (or download_path) is /files/{instance_id}/... path. "
-            "If token auth is enabled: /dt/... signed path is preferred; query alternative is download_url_query. "
-            "No Bearer required."
+        out["download_note"] = "download_url: /dt/ imzalı, Bearer gerekmez."
+        out["presentation_rule_tr"] = (
+            "URL'i PLAIN TEXT ver, markdown link [text](url) KULLANMA."
         )
     return out
 
@@ -600,6 +599,322 @@ def export_active_alarms_impl(cfg: InstanceConfig, format: str = "xlsx", limit: 
         mime = "text/csv"
 
     return file_payload(path, filename, mime, title, {"record_count": len(rows), "format": fmt}, cfg=cfg)
+
+
+def _build_and_payload(
+    *,
+    cfg: InstanceConfig,
+    rows: list[dict[str, Any]],
+    header_labels: dict[str, str],
+    format: str,
+    filename_base: str,
+    title_prefix: str,
+    extra: dict[str, Any] | None = None,
+) -> Any:
+    """Tek tip export yardimcisi: rows + header_labels -> xlsx/csv + file_payload."""
+    fmt = (format or "xlsx").lower()
+    if fmt not in ("xlsx", "csv"):
+        return {"error": "Invalid format. Supported: xlsx, csv"}
+    if not rows:
+        return {"error": "No records found."}
+
+    keys = list(rows[0].keys())
+    headers = [header_labels.get(k, k) for k in keys]
+
+    table_rows: list[dict[str, Any]] = []
+    for r in rows:
+        line: dict[str, Any] = {}
+        for k in keys:
+            v = r.get(k)
+            line[k] = "" if v is None else v
+        table_rows.append(line)
+
+    clean_old_exports(exports_dir(cfg))
+    d = exports_dir(cfg)
+    stamp = datetime.now().strftime("%Y%m_%H%M%S")
+    filename = f"{filename_base}_{stamp}.{fmt}"
+    path = d / filename
+    title = f"{title_prefix} -- " + datetime.now().strftime("%d.%m.%Y %H:%M")
+
+    if fmt == "xlsx":
+        excel_rows = []
+        for r in table_rows:
+            excel_rows.append({headers[i]: r[keys[i]] for i in range(len(keys))})
+        build_xlsx_simple(title, headers, excel_rows, path)
+        mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    else:
+        build_csv_from_keys(headers, table_rows, keys, path)
+        mime = "text/csv"
+
+    meta = {"record_count": len(rows), "format": fmt}
+    if extra:
+        meta.update(extra)
+    return file_payload(path, filename, mime, title, meta, cfg=cfg)
+
+
+def export_nodes_impl(
+    cfg: InstanceConfig,
+    format: str = "xlsx",
+    nType: str = "",
+    keyword: str = "",
+    only_active: bool = False,
+) -> Any:
+    """Tum node'lari tek cagrida Excel/CSV. Filtreler: nType, keyword (nName LIKE), only_active."""
+    if not cfg.db:
+        return {"error": "DB config missing"}
+    where: list[str] = []
+    params: list[Any] = []
+    nt = (nType or "").strip()
+    if nt and nt.lstrip("-").isdigit():
+        where.append("n.nType = %s")
+        params.append(int(nt))
+    if (keyword or "").strip():
+        where.append("n.nName LIKE %s")
+        params.append(f"%{keyword.strip()}%")
+    if only_active:
+        where.append("n.nState >= 0")
+    wh = ("WHERE " + " AND ".join(where)) if where else ""
+    sql = f"""
+        SELECT n.id, n.nName, n.nView, n.nType, n.nState, n.nPath, n.nBase,
+               pt.name AS urun_tipi, pt.category AS urun_kategori
+        FROM node n
+        LEFT JOIN node_product_type pt ON n.nView = pt.nView
+        {wh}
+        ORDER BY n.id ASC
+    """
+    with dbmod.connect(cfg.db) as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, tuple(params))
+            rows = list(cur.fetchall())
+    header_labels = {
+        "id": "Node ID",
+        "nName": "Ad",
+        "nView": "Ekran Tipi (nView)",
+        "nType": "Tip Kodu",
+        "nState": "Durum",
+        "nPath": "Yol",
+        "nBase": "Parent ID",
+        "urun_tipi": "Urun Tipi",
+        "urun_kategori": "Kategori",
+    }
+    return _build_and_payload(
+        cfg=cfg, rows=rows, header_labels=header_labels, format=format,
+        filename_base="nodelar", title_prefix="Nodelar",
+        extra={"filter_nType": nt, "filter_keyword": keyword, "only_active": only_active},
+    )
+
+
+def export_alarm_definitions_impl(
+    cfg: InstanceConfig,
+    format: str = "xlsx",
+    nodeId: int = 0,
+) -> Any:
+    """alarmparameters: tum alarm TANIMLARI. Aktif alarm icin export_alarms_history kullan."""
+    if not cfg.db:
+        return {"error": "DB config missing"}
+    where = ""
+    params: list[Any] = []
+    if int(nodeId or 0) > 0:
+        where = "WHERE ap.nid = %s"
+        params.append(int(nodeId))
+    sql = f"""
+        SELECT ap.pId, ap.name, ap.nid, n.nName AS node_adi, ap.tagPath,
+               ap.minVal, ap.maxVal, ap.alType, ap.alGroup, ap.alGroupPath, ap.comment
+        FROM alarmparameters ap
+        LEFT JOIN node n ON ap.nid = n.id
+        {where}
+        ORDER BY ap.nid ASC, ap.pId ASC
+    """
+    with dbmod.connect(cfg.db) as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, tuple(params))
+            rows = list(cur.fetchall())
+    header_labels = {
+        "pId": "pId", "name": "Ad", "nid": "Node ID", "node_adi": "Node Adi",
+        "tagPath": "Tag", "minVal": "Min", "maxVal": "Max",
+        "alType": "Tip", "alGroup": "Grup", "alGroupPath": "Grup Yolu", "comment": "Aciklama",
+    }
+    return _build_and_payload(
+        cfg=cfg, rows=rows, header_labels=header_labels, format=format,
+        filename_base="alarm_tanimlari", title_prefix="Alarm Tanimlari",
+    )
+
+
+def export_alarms_history_impl(
+    cfg: InstanceConfig,
+    format: str = "xlsx",
+    start_date: str = "",
+    end_date: str = "",
+    only_active: bool = False,
+    limit: int = 5000,
+) -> Any:
+    """alarmstate zaman araligi export. Gercek history degil — alarmstate.time'a gore."""
+    if not cfg.db:
+        return {"error": "DB config missing"}
+    lim = min(max(int(limit or 5000), 1), 20000)
+    where: list[str] = []
+    params: list[Any] = []
+    if only_active:
+        where.append("ast.state = 1")
+    if (start_date or "").strip():
+        where.append("ast.time >= %s")
+        params.append(start_date.strip())
+    if (end_date or "").strip():
+        where.append("ast.time <= %s")
+        params.append(end_date.strip())
+    wh = ("WHERE " + " AND ".join(where)) if where else ""
+    sql = f"""
+        SELECT ast.pId, ap.name, ap.nid, n.nName AS node_adi, ap.tagPath,
+               ap.minVal, ap.maxVal, ast.lastVal, ast.state,
+               ast.time AS alarm_zamani, ap.alType, ap.alGroup, ap.comment
+        FROM alarmstate ast
+        INNER JOIN alarmparameters ap ON ast.pId = ap.pId
+        LEFT JOIN node n ON ap.nid = n.id
+        {wh}
+        ORDER BY ast.time DESC
+        LIMIT %s
+    """
+    with dbmod.connect(cfg.db) as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, (*params, lim))
+            rows = list(cur.fetchall())
+    header_labels = {
+        "pId": "pId", "name": "Ad", "nid": "Node ID", "node_adi": "Node Adi",
+        "tagPath": "Tag", "minVal": "Min", "maxVal": "Max", "lastVal": "Son Deger",
+        "state": "Aktif (1=Evet)", "alarm_zamani": "Zaman",
+        "alType": "Tip", "alGroup": "Grup", "comment": "Aciklama",
+    }
+    return _build_and_payload(
+        cfg=cfg, rows=rows, header_labels=header_labels, format=format,
+        filename_base="alarm_gecmisi", title_prefix="Alarm Gecmisi",
+        extra={"only_active": only_active, "start_date": start_date, "end_date": end_date},
+    )
+
+
+def export_user_groups_impl(cfg: InstanceConfig, format: str = "xlsx") -> Any:
+    """Tum kullanici gruplari."""
+    if not cfg.db:
+        return {"error": "DB config missing"}
+    with dbmod.connect(cfg.db) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT g.id, g.gName, g.gParent,
+                       COUNT(u.id) AS kullanici_sayisi
+                FROM user_groups g
+                LEFT JOIN users u ON u.gid = g.id
+                GROUP BY g.id, g.gName, g.gParent
+                ORDER BY g.gName ASC
+                """
+            )
+            rows = list(cur.fetchall())
+    header_labels = {
+        "id": "Grup ID", "gName": "Ad", "gParent": "Parent ID",
+        "kullanici_sayisi": "Kullanici Sayisi",
+    }
+    return _build_and_payload(
+        cfg=cfg, rows=rows, header_labels=header_labels, format=format,
+        filename_base="kullanici_gruplari", title_prefix="Kullanici Gruplari",
+    )
+
+
+def export_users_impl(
+    cfg: InstanceConfig,
+    format: str = "xlsx",
+    status: str = "all",
+    company: str = "",
+    city: str = "",
+) -> Any:
+    """Tum kullanicilari tek seferde Excel/CSV olarak export eder.
+    LLM uzerinden data gecirmez — DB'den direkt okur.
+    """
+    fmt = (format or "xlsx").lower()
+    if fmt not in ("xlsx", "csv"):
+        return {"error": "Invalid format. Supported: xlsx, csv"}
+    if not cfg.db:
+        return {"error": "DB config missing"}
+
+    where: list[str] = []
+    params: list[Any] = []
+    st = (status or "all").lower()
+    if st == "active":
+        where.append("u.uEnable = 1")
+    elif st in ("inactive", "passive", "pasif"):
+        where.append("u.uEnable = 0")
+    if (company or "").strip():
+        where.append("u.com_info LIKE %s")
+        params.append(f"%{company.strip()}%")
+    if (city or "").strip():
+        where.append("u.uCity LIKE %s")
+        params.append(f"%{city.strip()}%")
+    wh = ("WHERE " + " AND ".join(where)) if where else ""
+    sql = f"""
+        SELECT u.id, u.uFirstName, u.uLastName, u.uName, u.uTel, u.uMail,
+               u.uTitle, u.com_info, u.uCity, u.uLevel, u.uType,
+               g.gName AS grup_adi,
+               CASE WHEN u.uEnable = 1 THEN 'Aktif' ELSE 'Pasif' END AS durum,
+               u.lastLogin, u.createdTime
+        FROM users u LEFT JOIN user_groups g ON u.gid = g.id
+        {wh} ORDER BY u.id DESC
+    """
+    with dbmod.connect(cfg.db) as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, tuple(params))
+            rows = list(cur.fetchall())
+
+    if not rows:
+        return {"error": "No users found for given filters."}
+
+    header_labels = {
+        "id": "ID",
+        "uFirstName": "Ad",
+        "uLastName": "Soyad",
+        "uName": "Kullanici Adi",
+        "uTel": "Telefon",
+        "uMail": "Email",
+        "uTitle": "Unvan",
+        "com_info": "Sirket",
+        "uCity": "Sehir",
+        "uLevel": "Yetki Seviyesi",
+        "uType": "Tip",
+        "grup_adi": "Grup",
+        "durum": "Durum",
+        "lastLogin": "Son Giris",
+        "createdTime": "Kayit Tarihi",
+    }
+    keys = list(rows[0].keys())
+    headers = [header_labels.get(k, k) for k in keys]
+
+    table_rows: list[dict[str, Any]] = []
+    for r in rows:
+        line: dict[str, Any] = {}
+        for k in keys:
+            v = r.get(k)
+            line[k] = "" if v is None else v
+        table_rows.append(line)
+
+    clean_old_exports(exports_dir(cfg))
+    d = exports_dir(cfg)
+    stamp = datetime.now().strftime("%Y%m_%H%M%S")
+    filename = f"kullanicilar_{stamp}.{fmt}"
+    path = d / filename
+    title = f"Kullanicilar ({st}) -- " + datetime.now().strftime("%d.%m.%Y %H:%M")
+
+    if fmt == "xlsx":
+        excel_rows = []
+        for r in table_rows:
+            excel_rows.append({headers[i]: r[keys[i]] for i in range(len(keys))})
+        build_xlsx_simple(title, headers, excel_rows, path)
+        mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    else:
+        build_csv_from_keys(headers, table_rows, keys, path)
+        mime = "text/csv"
+
+    return file_payload(
+        path, filename, mime, title,
+        {"record_count": len(rows), "format": fmt, "status": st},
+        cfg=cfg,
+    )
 
 
 def export_custom_data_impl(

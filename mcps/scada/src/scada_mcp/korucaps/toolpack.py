@@ -53,88 +53,26 @@ class KoruCapsToolPack:
             sub_application: Optional[str] = None,
             max_results: int = 10,
         ) -> Any:
-            """KoruCAPS pompa boyutlandirma araci - Grundfos WinCAPS birebir algoritmasi.
+            """Pompa seçimi (Grundfos WinCAPS algoritması). Q, H → en verimli pompalar.
 
-## NE YAPAR:
-Verilen Q (debi) ve H (basma yuksekligi) icin en uygun pompalari bulur.
-Sonuctaki her pompa GARANTILI olarak istenen H basma yuksekligini saglar.
-Sonuctaki Q degeri = pompanin istenen H'de verdigi GERCEK debidir (istenen Q'dan farkli olabilir).
+SCADA node için: önce <prefix>_prepare_pump_selection(nodeId). Response'taki next_action'ı aynen çağır.
+Sonuç: H garanti sabit, Q ≥ istenen (VFD ile frekans düşürülür). Enerji bazlı sıralı.
+Birim: lt/sn × 3.6 → m3/h.
 
-## BIR SCADA NODE ICIN CAGIRIYORSAN:
-**ONCE `<prefix>_prepare_pump_selection(nodeId)` cagir** — bu tool canli tag'leri (ToplamHm,
-Debimetre, An_Guc, YaklasikHidrolikVerim) okur, formulle dogrular, hazir Q/H dondurur.
-Response'ta `next_action` varsa ONU AYNEN cagir — flow_m3h ve head_m'i sen tahmin etme.
+application / sub_application:
+- groundwater/WELLINS  : kuyu / sondaj / dalgıç (SP)
+- groundwater/HORINS   : yatay montaj
+- groundwater/SHALLOW  : sığ kuyu (SQ)
+- booster/BOOSPUMP     : terfi / basınç artırma (CR)
+- booster/BOOSSET      : paket set (Hydro)
+- domestic/PUMPSDO     : depo / hazne
+- sewage/PUMPSSEW      : atıksu
+- heating/CIRCHEAT     : ısıtma
+- aircon/CIRCAIR       : soğutma
 
-Eger node yoksa / sadece Q ve H biliniyorsa direkt bu tool'u cagir.
-
-## KRITIK: SONUCLARI NASIL YORUMLA
-- H (basma yuksekligi) = ISTENEN H. Her pompa bu H'de calisir, Hm DUSMEZ.
-- Q (debi) = Pompanin bu H'de verdigi gercek debi. Istenen Q'dan BUYUK veya ESIT olur, ASLA DUSMEZ.
-- Q istenen debiden buyukse -> VFD (frekans konvertor) ile frekans dusurulerek istenen debiye ayarlanir.
-- Siralama = En dusuk enerji tuketimi birinci.
-- search_pumps sonuclarini TEKRAR calculate_operating_point ile DOGRULAMA. Sonuclar zaten dogru.
-
-## BIRIM CEVIRME:
-- Kullanici lt/sn verdiyse -> 3.6 ile carparak m3/h'e cevir (orn: 44 lt/sn = 158.4 m3/h)
-- SCADA Hm verisi = basma yuksekligi (H metre)
-
-## UYGULAMA + ALT UYGULAMA OTOMATIK BELIRLEME:
-Kullanici kelimelerinden DOGRU application VE sub_application secilmeli:
-
-YERALTI SU (application='groundwater'):
-- "sondaj kuyu" / "kuyu pompasi" / "derin kuyu" -> sub_application='WELLINS' (SP dalgic)
-- "yatay montaj" / "horizontal" -> sub_application='HORINS' (SP, BM, BMB)
-- "sig kuyu" / "shallow well" -> sub_application='SHALLOW' (SQ, SQE, SP kucuk)
-- sadece "kuyu" -> sub_application='WELLINS' (DEFAULT: sondaj kuyu)
-
-BASINC ARTIRMA (application='booster'):
-- "terfi" / "terfi istasyonu" / "basinc artirma" -> sub_application='BOOSPUMP' (CR, TP, NB)
-- "paket set" / "hazir set" -> sub_application='BOOSSET' (Hydro sistemler)
-
-EVSEL SU (application='domestic'):
-- "depo" / "hazne" / "su deposu" -> sub_application='PUMPSDO'
-- "kuyu" + "ev" -> sub_application='WELLINDO'
-
-KANALIZASYON (application='sewage'):
-- "kanalizasyon" / "atiksu" / "pis su" -> sub_application='PUMPSSEW'
-
-ISITMA (application='heating'):
-- "isitma" / "kalorifer" / "sirkulasyon" -> sub_application='CIRCHEAT'
-
-SOGUTMA (application='aircon'):
-- "sogutma" / "klima" / "chiller" -> sub_application='CIRCAIR'
-
-ENDUSTRIYEL (application='industrial'):
-- "endustriyel" / "fabrika" / "proses" -> sub_application yok
-
-## SCADA NODE'DAN SECIM:
-1. Node adinda "Kuyu" -> application='groundwater', sub_application='WELLINS' (SP serisi)
-2. Node adinda "Terfi" -> application='booster', sub_application='BOOSPUMP' (CR serisi)
-3. Node adinda "Depo" -> application='domestic', sub_application='PUMPSDO'
-
-## KRITIK: CANLI TAG KULLAN, AYAR DEGERI DEGIL!
-Pompa secerken get_device_tag_values ile CANLI OLCUM oku:
-
-DOGRU (canli olcum tag'leri):
-- flow_m3h = get_device_tag_values('Debimetre') -> anlik debi (m3/h)
-- head_m   = get_device_tag_values('ToplamHm') -> anlik toplam basma yuksekligi (metre)
-
-YASAK (bunlar AYAR / KATALOG degerleri, GERCEK OLCUM DEGIL):
-- np_PompaDebi / np_PompaHm -> katalog degeri (nodePar tablosunda sabit)
-- XD_BasmaYukseklik         -> KULLANICI AYARI, gercek basma DEGIL!
-- XS_DebimetreMax           -> sensor tavani, gercek debi DEGIL!
-- XC_HedefBasinc            -> hedef setpoint, gercek olcum DEGIL!
-
-X* ile baslayan TUM tag'ler AYARDIR, olcum degildir. Kullanma.
-np_* ile baslayan tag'ler KATALOG degerdir, sahada gercek calisma degil.
-Sadece CANLI olcum tag'leri (Debimetre, ToplamHm, BasincSensoru, SuSeviye, An_Guc vb.) kullan.
-
-## POMPA CALISIYOR MU KONTROLU (ZORUNLU):
-search_pumps cagirmadan ONCE get_device_tag_values ile:
-- Pompa1StartStopDurumu veya PompaCalismaDurumu -> 1 olmali
-- 0 ise: Hm ve Debi GUVENILMEZ (dinamik degerler akis gerektirir)
-- Durmussa: get_node_log_data ile son calistigi donemi bulup o tarihten ortalama al
-- Tutarsizlik: P1 ≈ (Q × H) / 236 formulu ile an_Guc'u cross-check yap"""
+Canlı tag zorunlu: flow_m3h=Debimetre, head_m=ToplamHm.
+YASAK: X* (ayar), np_* (katalog), XD_BasmaYukseklik, XS_DebimetreMax.
+Pompa çalışıyor mu? Pompa1StartStopDurumu==1 olmalı. Kapalıysa log'dan."""
             freq = frequency_hz or "50"
 
             # Map application name to ID
@@ -175,20 +113,21 @@ search_pumps cagirmadan ONCE get_device_tag_values ile:
             )
 
             # Impeller stilini isimden cikar: sonu N ile biten Grundfos pompalar
-            # tirasli fan (kuculmus impeller) olarak kabul edilir.
-            # Ornekler: 'SP 125-8-AAN' -> tirasli, 'SP 125-8' -> tam capli.
+            # tirasli carka sahiptir (fabrikada torna tezgahinda cap kuculmus).
+            #   'SP 125-8-AAN' -> tirasli cark
+            #   'SP 125-8'     -> standart cark
             import re as _re_imp
             _TRIMMED_RE = _re_imp.compile(r"N\s*$")
             for _p in results:
                 _name = str(_p.get("ProdName") or "")
                 _is_trimmed = bool(_TRIMMED_RE.search(_name))
-                _p["impeller_style"] = "trimmed" if _is_trimmed else "full"
+                _p["impeller_style"] = "tirasli" if _is_trimmed else "standart"
                 _p["impeller_note_tr"] = (
-                    "Tirasli fan (kuculmus impeller) — H/Q ayari fabrikada tırasla yapilmis. "
-                    "Surucu varsa tercih edilmez (surucu zaten ayari yapar)."
+                    "Tıraşlı çark: çark çapı torna ile küçültülmüş, sabit iş noktasına uyarlanmış. "
+                    "Sürücü varsa tercih edilmez (esneklik kaybı)."
                     if _is_trimmed else
-                    "Tam capli (standart) impeller. Sabit hizda calisir. "
-                    "Surucu ile H/Q ayari yapilir."
+                    "Standart çark: nominal, tam çaplı. Q-H eğrisinin tamamında çalışır. "
+                    "Sürücü varsa iş noktası frekans üzerinden ayarlanır; esnek."
                 )
 
             top_results = results[:max_results]
@@ -203,8 +142,8 @@ search_pumps cagirmadan ONCE get_device_tag_values ile:
 
             lines = []
             for i, p in enumerate(top_results):
-                _imp = p.get("impeller_style", "full")
-                _imp_tag = " [TIRASLI FAN]" if _imp == "trimmed" else " [TAM CAPLI]"
+                _imp = p.get("impeller_style", "standart")
+                _imp_tag = " [TIRAŞLI ÇARK]" if _imp == "tirasli" else " [STANDART]"
                 line = (
                     f"{i + 1}. **{p['ProdName']}**{_imp_tag} ({p.get('stages', 1)} kademe) [{p.get('ProductNo', '')}]\n"
                     f"   Q={p['qActual']} m3/h | H={head_m} m (garanti) | P2={p['p2Actual']} kW | P1={p['p1Actual']} kW\n"
@@ -216,14 +155,19 @@ search_pumps cagirmadan ONCE get_device_tag_values ile:
                     line += f" | Yillik enerji={p['energyKwh']:,} kWh"
                 lines.append(line)
 
-            # VFD/impeller kuralini aciklamaya ekle
+            # VFD / cark tipi kurali aciklamasi (kullaniciya aynen sunulabilir)
             _vfd_rule_tr = (
-                "\n### IMPELLER KURALI (TIRASLI FAN vs TAM CAPLI)\n"
-                "- **Tam capli** = standart impeller, sabit hizda calisir.\n"
-                "- **Tirasli fan** = fabrikada impelleri kuculmus (isim sonunda `N`, orn. 'SP 125-8-AAN').\n"
-                "- Sistemde **surucu (VFD) varsa** → tam capli tercih edilir (surucu zaten H/Q ayarini yapar).\n"
-                "- **Surucu yoksa** → tirasli fan daha esnek ayar imkani verir.\n"
-                "- Surucu ile istenen noktaya ulasilamiyorsa → tirasliya dunulur.\n"
+                "\n### ÇARK TİPİ — STANDART vs TIRAŞLI\n"
+                "- **Standart çark:** Nominal (tam çaplı) fabrikasyon. Q-H eğrisinin tamamında çalışabilir.\n"
+                "- **Tıraşlı çark:** Santrifüj pompanın çark çapının, belirli bir çalışma noktasına "
+                "(debi + basınç ihtiyacına) uyması için torna tezgahında küçültülmesi işlemidir. "
+                "Bu sayede o iş noktasında gereksiz enerji tüketimi azalır, sistem daha verimli olur. "
+                "Grundfos isimlendirmesinde sonu `N` ile biter (örn. 'SP 125-8-AAN').\n"
+                "- **Sistemde sürücü (VFD) varsa →** standart çark tercih edilir. Sürücü zaten frekans "
+                "ayarı ile Q/H'i istenen noktaya getirebilir; tıraşlı çarkın dar çalışma bandı esneklik "
+                "kaybı olur.\n"
+                "- **Sürücü yoksa →** tıraşlı çark tek sabit iş noktası için daha verimlidir.\n"
+                "- Sürücü ile istenen noktaya ulaşılamıyorsa tıraşlıya dönülür.\n"
             )
 
             text = (
@@ -250,13 +194,9 @@ search_pumps cagirmadan ONCE get_device_tag_values ile:
             flow_m3h: float,
             frequency_hz: float = 50,
         ) -> Any:
-            """Belirli bir debide pompanin performansini hesaplar. Pompa adi ve Q (debi) verildiginde H, P2, P1, verim, RPM, NPSH doner.
-
-DIKKAT: Bu tool SADECE egri analizi icindir.
-- search_pumps sonuclarini DOGRULAMAK icin bu tool'u KULLANMA - search_pumps zaten dogru sonuc verir.
-- Bu tool Q verildiginde H hesaplar (search_pumps ise H verildiginde Q hesaplar - FARKLI ISLEM).
-- Kullanici "bu pompa Q=160'da kac metre basar?" diye sorarsa KULLAN.
-- VFD ile farkli frekansta performans hesabi icin KULLAN."""
+            """Pompa performans noktası: pump_name + Q → H, P1, P2, verim, RPM, NPSH.
+Q verilir, H hesaplanır (search_pumps'ın tersi). search_pumps sonucunu doğrulamak için KULLANMA.
+"Bu pompa Q=160'da kaç m basar?" veya farklı frekansta performans için."""
             from ..db import connect as _db_connect
 
             nominal_freq = 50 if frequency_hz <= 50 else 60
