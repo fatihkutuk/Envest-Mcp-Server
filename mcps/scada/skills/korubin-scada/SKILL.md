@@ -152,3 +152,19 @@ menusundeki ayar yerini soylemez.
 5. **Pompa durumu kontrol et** - `Pompa1StartStopDurumu=0` iken Hm/Debi guvenilmez, loglardan calisma donemini bul
 6. **Formulle dogrula** - `P1 ≈ (Q × H) / 236` ile tutarsizliklari yakala
 7. **Panel URL kullan** - Iç IP/dosya yolu asla kullaniciya gosterme
+
+## Cross-Instance Node Search (Coklu SCADA)
+
+Bu MCP'de birden fazla SCADA instance olabilir (`corumscada_*`, `envestbulutkorubin_*`, vb.).
+Kullanici **hangi SCADA** oldugunu belirtmediyse:
+
+**ZORUNLU AKIS:**
+1. Kullanici node adi soyledi ama SCADA belirtmedi (orn: "selafur kuyu 4")
+2. Mevcut TUM SCADA prefix'lerinde paralel ara:
+   - `corumscada_find_nodes_by_keywords("selafur kuyu 4")`
+   - `envestbulutkorubin_find_nodes_by_keywords("selafur kuyu 4")`
+3. Biri bulduysa → o instance'ta devam et
+4. Ikisi de bulduysa → kullaniciya hangisi diye sor
+5. Hicbiri bulmadiysa → kullaniciya bildir, baska varsayimlar yapma, isim hatasi olabilir
+
+**YASAK:** Ilk instance'ta bulamayinca "yok" deyip kullaniciya bilgi istemek. Once diger instance'lari dene.
