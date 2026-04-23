@@ -88,8 +88,11 @@ Progressive disclosure: content is NOT included - use get_skill to read."""
             for s in ordered:
                 desc = s["description"]
                 if isinstance(desc, str):
-                    # Trim to first line for listing
-                    desc = desc.strip().split("\n")[0]
+                    # YAML '|' literal block'lar satir satir gelir; LLM'in keyword
+                    # eslestirmesi yapabilmesi icin tam metni tek-bosluklu normalize
+                    # ederek goster. (Ilk satiri alip kesmek skill routing'i bozuyor;
+                    # modem/alarm/register gibi kritik keyword'ler gorunmez oluyor.)
+                    desc = " ".join(desc.split())
                 files_str = ", ".join(f"`{f}`" for f in s["files"])
                 tag = " ⭐ READ FIRST" if s["name"] == "core-rules" else ""
                 lines.append(f"### {s['name']} (v{s['version']}){tag}")

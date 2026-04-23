@@ -3,9 +3,17 @@ name: core-rules
 description: |
   HER GOREV ONCESI OKUNMALI. Tum Envest MCP instance'lari (SCADA, KoruCAPS, DB) icin
   kritik davranis kurallari: coklu instance arama, birim kurallari, yuvarlama yasagi,
-  ayar vs olcum ayrimi, pompa secimi akisi, log analizi, panel URL yonlendirmesi.
+  ayar vs olcum ayrimi, pompa secimi akisi, log analizi, panel URL yonlendirmesi,
+  CIHAZ DOKUMAN SORUSU yonlendirmesi. AQUA CNT (100S/100F/100FP/100SL) hakkinda
+  SORU (modem status 2/15/102, hedef status 10/11/100/101/120/121/200/201/30/31,
+  alarm kodu, modbus register, uyari/alarm word bit, APN, CSQ, LED, pil, debimetre
+  M00-M92, V/Z/W transduser, motor koruma, SCADA linkleme, antiblokaj, acil senaryo)
+  geldiginde SCADA tool'u CAGIRMA, once aqua-devices skill'ini oku. Bu dosyanin
+  §10.1 bolumunde dosya yonlendirmesi var.
   Use when: ANY task on this MCP server. Call get_skill('core-rules') BEFORE any other tool.
-  Keywords: core, rules, always, first, kritik, zorunlu, cross-instance, prefix, kurallar.
+  Keywords: core, rules, always, first, kritik, zorunlu, cross-instance, prefix, kurallar,
+  AQUA, AQUA CNT, modem status, hedef status, alarm, register, modbus, APN, LED, CSQ,
+  debimetre, cihaz dokuman, device manual, kilavuz, manual.
 version: "1.0.0"
 priority: "always-read-first"
 ---
@@ -22,10 +30,11 @@ priority: "always-read-first"
 Bu MCP sunucusu **tek port** uzerinden **birden fazla SCADA** ve sistemi servis eder.
 Tool isimleri `<instance_prefix>_<tool>` formatindadir:
 
-- `corumscada_find_nodes_by_keywords` → Corum SCADA
-- `envestbulutkorubin_find_nodes_by_keywords` → Envest Korubin Bulut
+- `<scada_prefix>_find_nodes_by_keywords` → her SCADA instance'ının kendi prefix'i (örn. saha SCADA'sı)
 - `korucaps_search_pumps` → KoruCAPS pompa secimi (ortak)
 - `database_*` → generic DB tool (varsa)
+
+Prefix'ler **dinamik**: aktif token'a göre `list_scada_instances` ile öğrenilir.
 
 ### ZORUNLU AKIS — Node ararken TEK TOOL kullan
 
@@ -37,7 +46,7 @@ find_node_everywhere(keywords="selafur kuyu 4")
 
 Bu tool **tum SCADA instance'larinda** ayni anda arar. Prefix hatirlamaya / tek tek
 denemeye gerek **YOK**. Response donus:
-- `selected_tool_prefix` → sonraki tool cagrilarinda bu prefix'i kullan (orn. `envestbulutkorubin_get_node`)
+- `selected_tool_prefix` → sonraki tool cagrilarinda bu prefix'i kullan (orn. `<selected_tool_prefix>get_node`)
 - `total_found == 0` → kullaniciya bildir, tahmin yurutme
 - Birden fazla esleme → kullaniciya hangisi oldugunu sor
 
@@ -136,22 +145,46 @@ Kullanici "bu noktanin kendi pompasi ne", "takili pompa nedir" dediginde:
 Bu tool **iki kaynagi** birden okur ve oncelik sirasiyla doner:
 
 1. **`pump_eff` tablosu** (kbindb): marka, model, motor_brand, nominal Q/H, motor_power,
-   **`annexa` yaslanma katsayisi**, montage tarihi, note. Bu tablo varsa ONCELIK.
+   **`annexa` katalog-gerçek sapma katsayısı**, montage tarihi, note. Bu tablo varsa ONCELIK.
 2. **`node_param` np_\* keys**: `np_PompaMarka`, `np_PompaModel`, `np_PompaDebi`, `np_PompaHm`,
    `np_PompaGuc`, `np_PompaTip`, `np_SurucuGuc`, `np_SurucuModel`, `np_PompaCap`, `nPMontaj` (montaj derinligi).
 
-**annexa katsayisi ne?**
-- `annexa = 1` → pompa nominal (yeni gibi)
-- `annexa < 1` → pompa **yaslanmis/aşinmis**, Q-H egrisi asagi kaymis
-- Frekans projeksiyonunda: `H_gercek = H_katalog × annexa` uygula.
-- Ornek: annexa=0.85 → pompa nominal H'nin %85'ini veriyor.
+### `annexa` NEDİR — DOĞRU TANIM (yanlış yorumlama sık yapılıyor)
 
-**annexa KULLANICIYA NE ZAMAN SUNULUR?**
-- **Sadece** ölçüm ile etiket arasında belirgin sapma olduğunda açıklama amaçlı:
-  _"Etiket 100 m3/h diyor ama sistem 95 veriyor — annexa=0.94 tolerans normaldir"_
-- **Frekans projeksiyonu / sürücü hesabı / pompa değişikliği** sorulduğunda hesap gereği
-- Normal "kendi pompası ne" sorusunda annexa **gösterilmez** — arka planda tutulur.
-- Her seferinde "pompa %6 aşınmış" gibi değil — sadece gerektiğinde.
+`annexa` **pompa yaşlanma katsayısı DEĞİLDİR.** İsmi ISO 9001:2015 "Annex A" (bilgilendirici/açıklayıcı ek) kavramından esinlenerek konulmuştur — **katalog eğrisi ile saha ölçümü arasındaki normal tolerans bandı**nı temsil eder.
+
+**Temel ilke:** Katalog Q-H değerleri **üst/ideal** değerlerdir. Gerçek tesis:
+- Su sıcaklığı farkı (katalog 20°C, saha farklı olabilir)
+- Montaj toleransları (motor-pompa eksenel kaçıklık, mühür sürtünmesi)
+- Sıvı özellikleri (mineral içeriği, gaz kabarcığı, yoğunluk)
+- Test stand ≠ saha koşulu
+
+sebepleriyle her zaman katalog değerinin %5-15 altında bir performans verir. **Bu fark normaldir ve aşınma göstermez.**
+
+- `annexa = 1.00` → katalog ile saha ölçümü tam örtüşüyor (nadir)
+- `annexa = 0.90 – 0.95` → **normal tolerans** (tipik tesisat)
+- `annexa = 0.80 – 0.90` → üst sınır, ek inceleme düşünülebilir
+- `annexa < 0.80` → abartılı sapma, birden fazla kanıtla desteklenirse **aşınma/arıza şüphesi**
+
+### `annexa`'ya göre AŞINMA KARARI — HİÇBİR ZAMAN TEK BAŞINA VERİLMEZ
+
+Aşınma kararı **üç bağımsız kanıt** gerektirir:
+
+1. `annexa < 0.85` (sapma payı %15'ten büyük), **VE**
+2. **Zaman içinde bozulma trendi**: `analyze_log_trend` ile son 3-6 ay boyunca aynı çalışma noktasında H veya verim sürekli düşüyor, **VE**
+3. Mekanik semptom: titreşim artışı, motor akımı yükselmesi, şaft kayıpları — ya da kullanıcı raporu (debi düştü, basınç yetmiyor).
+
+**YASAK**: "annexa=0.94 → pompa %6 yaşlanmış" şeklinde tek cümlelik çıkarım. Bu istatistiksel olarak normal sapmadır, aşınma DEĞİLDİR.
+
+**DOĞRU ifade örnekleri:**
+- "Katalog değeri ile saha ölçümü arasında %6 sapma var (annexa=0.94). Bu aralık tolerans bandında kalıyor — normal çalışma."
+- (Sadece 3 kanıt varsa) "annexa=0.78 + son 6 ayda H %12 düştü + motor akımı %8 arttı → pompada aşınma/arıza şüphesi, bakım önerilir."
+
+### `annexa` KULLANICIYA NE ZAMAN SUNULUR?
+- **Kullanıcı ölçüm-etiket farkını sorduğunda** ("katalog 100 diyor ama 95 veriyor") → "annexa=0.94 toleransı, normaldir" diye açıkla.
+- **Frekans projeksiyonu / pompa değişikliği** hesaplarında iç katsayı olarak kullan, açıkça sun.
+- **Normal "kendi pompası ne" sorusunda annexa BAHSEDİLMEZ** — arka planda tutulur.
+- **"Verim analizi" sorusunda annexa sadece bilgi amaçlı tek satır** — aşınma yorumuna dönüştürme.
 
 ### Frekans Projeksiyonu (VFD ile "X Hz'de ne olur?")
 
@@ -250,6 +283,7 @@ Bu sunucuda domain bilgisi **skill** dosyalarinda saklanir (markdown). Her gorev
 2. **BU dosyayi** zaten okudun (`core-rules`)
 3. Gorev konusuna gore ilgili skill'i oku:
    - SCADA node/ekran → `korubin-scada` (SKILL.md sonra uygun alt dosya)
+   - **AQUA CNT cihazi (100S/100F/100FP/100SL) — modem, LED, alarm, register, menu, sensor** → `aqua-devices` (aşağıda §10.1)
    - Database → `database-best-practices`
 4. Tool cagrilarinda skill'deki kurallari uygula
 
@@ -259,6 +293,32 @@ Bir node'un `nView` alanini ogrendikten sonra:
 get_skill('korubin-scada', 'screen-types/nview/<nView>.md')
 ```
 (orn. `a-kuyu-envest.md`, `a-dma-p-v3.md`)
+
+---
+
+## 10.1 CIHAZ DOKUMAN SORUSU — ONCE aqua-devices SKILL, TOOL DEGIL
+
+**Kural:** Kullanici **AQUA CNT cihazinin kendisine ait** (panel, modem, LED, ekran, alarm kodlari, modbus register, menu adimi, APN, sensor teknik ozellikleri, debimetre M-kodlari) bir soru sordugunda:
+
+- **ILK adim:** `get_skill('aqua-devices', '<uygun-dosya>.md')` — dosya yonlendirmesi `aqua-devices/SKILL.md` icindeki routing tablosunda
+- **SCADA tool'lari (find_nodes, get_device_tag_values, run_safe_query, ...) GENELDE GEREKLI DEGIL.** Cevap **kılavuzdadir.**
+- Sadece cihazin **o anki durumu** (bu kuyuda su an modem ne, su an hangi alarm aktif) soruluyorsa: skill'i oku + sonra **1 tane** SCADA sorgusu yeterli. Duzinelerce tool cagirmaz.
+
+**Tipik sorular → hangi dosya:**
+
+| Soru turu | Oku |
+|---|---|
+| "Modem Status 2 / 15 / 102 ne demek" | `aqua-devices/modem-status.md` |
+| "Hedef 11 / 100 / 201 ne demek" | `aqua-devices/hedef-status.md` |
+| "Motor Calisma Hata / SurucuElModCalisiyor / Pil Sicaklik" | `aqua-devices/alarms-and-warnings.md` |
+| "Register X hangi tag / Control Word bit X" | `aqua-devices/modbus-reference.md` |
+| "APN ne olmali / Hedef IP nasil" | `aqua-devices/modem-status.md` §4-5 |
+| "Ultrasonik debimetre hatasi I / J / H / K" | `aqua-devices/ultrasonic-flowmeter.md` |
+| "24V besleme / 4-20mA / pil / Li-Po" | `aqua-devices/hardware-reference.md` |
+| "Antiblokaj / SCADA linkleme / acil senaryo" | `aqua-devices/operating-modes.md` |
+| "Min / Max koruma esikleri" | `aqua-devices/motor-protection.md` |
+
+**YASAK:** AQUA kilavuzunda gecen bilgiyi run_safe_query + find_nodes + get_device_tag_values kombinasyonu ile rubik kupu gibi cozmeye calismak. Kilavuz skill'i var, **once oku**.
 
 ---
 

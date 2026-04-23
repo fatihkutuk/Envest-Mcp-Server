@@ -66,6 +66,8 @@ Her spesifik nView icin tek bir `.md` dosyasi — GENEL.phtml'den cikarilmis tag
 | Dosya | Aciklama |
 |-------|----------|
 | [pump-verification.md](analysis/pump-verification.md) | Pompa secimi oncesi veri dogrulama, pompa calisiyor mu kontrolu, formulle cross-check |
+| [pump-frequency-projection.md](analysis/pump-frequency-projection.md) | VFD frekans projeksiyonu (sistem eğrisi + Affinity), annexa sapma toleransı |
+| [hydraulic-network-analysis.md](analysis/hydraulic-network-analysis.md) | Pompa verim analizi akışkanlar mekaniği katmanı: Darcy-Weisbach sürtünme, statik/sürtünme/yerel kayıp ayrıştırması, boru çapı senaryosu, geri ödeme (LCC) |
 | [log-anomaly-detection.md](analysis/log-anomaly-detection.md) | Sensor arizasi, donmus deger, hat patlak tespiti, akilli SQL sorgulamasi |
 | [water-production.md](analysis/water-production.md) | Sayac endeks farkindan tarih araligindaki su uretimi/tuketimi hesabi |
 | [user-audit.md](analysis/user-audit.md) | log_tagyaz_user_log tablosundan kullanici degisiklik denetimi |
@@ -128,7 +130,9 @@ menusundeki ayar yerini soylemez.
 
 ---
 
-- **Urun/cihaz dokumani sorusu** (Aqua 100, modem kodu, LED durumlari, modbus haritasi):
+- **AQUA CNT cihaz dokuman sorusu** (modem status kodu, LED, alarm, modbus register, menu, APN, antiblokaj, ultrasonik debimetre hatasi I/J/H/K, Control Word bit, pil, 100S/100F/100FP/100SL):
+  -> **ONCE** `get_skill('aqua-devices')` → `SKILL.md` icindeki routing tablosundan dogru alt dosyayi oku (ornek: `modem-status.md`, `alarms-and-warnings.md`, `modbus-reference.md`). Cevap **kilavuzdadir**, SCADA tool'u gerekmez. **YASAK:** 20+ tool cagirarak kilavuz bilgisi turetmeye calismak.
+- **Diger urun/cihaz dokuman sorusu** (SMART PCS, AQUA 80, AQUA LP Logger):
   -> `get_product_specs`, `search_product_manual`, `get_product_settings`, `get_product_troubleshoot`
 - **Anlik deger / alarm / trend sorusu** (su an kac bar, canli debi, aktif alarm, grafik):
   -> `get_device_tag_values`, `get_device_data`, `get_active_alarms`, `get_chart_data`
@@ -142,6 +146,7 @@ menusundeki ayar yerini soylemez.
 - **Seviye profili**: -> `analyze_seasonal_level_profile`
 - **Bir node'un ekran tagleri sorulunca** (ornek: "a-kuyu-envest'te toplamhm nedir"): once aile skili (kuyu.md), sonra `screen-types/nview/<nView>.md` detay tablosu.
 - **Pompa secimi / degisikligi sorusu**: -> `analysis/pump-verification.md` oku, sonra canli Hm ve Debi tag'lerini al, `korucaps_search_pumps` kullan. **np_ parametrelerini DEGIL canli tag'leri kullan!**
+- **Pompa VERİM analizi / "neden çok enerji çekiyor" / sürtünme / boru çapı / yatırım sorusu**: -> `analysis/hydraulic-network-analysis.md` oku, sonra `analyze_hydraulic_network(nodeId)` → ayrıştırma al, gerekirse `analyze_pipe_upgrade_economics(...)` ile senaryo. ToplamHm'i tek sayı kabul etme, bileşenlerine ayır.
 - **Sensor arizasi / patlak / anormal deger sorusu**: -> `analysis/log-anomaly-detection.md` oku, sonra ilgili tool'lar (`get_node_log_data`, `analyze_log_trend`, `run_safe_query`)
 - **Su uretimi / tuketim sorusu** ("Mart ayinda kac m3 uretilmis"): -> `analysis/water-production.md` oku, sonra `T_` sayac tag'ini bul, endeks farki hesapla
 - **"Kim bu ayari degistirmis / neden sapti" sorusu**: -> `analysis/user-audit.md` oku, `run_safe_query` ile `log_tagyaz_user_log` tablosunu sorgula
@@ -159,16 +164,17 @@ menusundeki ayar yerini soylemez.
 
 ## Cross-Instance Node Search (Coklu SCADA)
 
-Bu MCP'de birden fazla SCADA instance olabilir (`corumscada_*`, `envestbulutkorubin_*`, vb.).
+Bu MCP'de birden fazla SCADA instance olabilir. Her instance'ın prefix'i **dinamik** (token'a göre).
 Kullanici **hangi SCADA** oldugunu belirtmediyse:
 
-**ZORUNLU AKIS:**
-1. Kullanici node adi soyledi ama SCADA belirtmedi (orn: "selafur kuyu 4")
-2. Mevcut TUM SCADA prefix'lerinde paralel ara:
-   - `corumscada_find_nodes_by_keywords("selafur kuyu 4")`
-   - `envestbulutkorubin_find_nodes_by_keywords("selafur kuyu 4")`
-3. Biri bulduysa → o instance'ta devam et
-4. Ikisi de bulduysa → kullaniciya hangisi diye sor
-5. Hicbiri bulmadiysa → kullaniciya bildir, baska varsayimlar yapma, isim hatasi olabilir
+**ZORUNLU AKIS — TEK TOOL:**
+```
+find_node_everywhere(keywords="...")
+```
 
-**YASAK:** Ilk instance'ta bulamayinca "yok" deyip kullaniciya bilgi istemek. Once diger instance'lari dene.
+Bu tool tum SCADA instance'larinda ayni anda arar, dogru prefix'i bulur, response'ta
+`selected_tool_prefix` doner. Sonraki tool cagrilari bu prefix'le yapilir.
+
+Mevcut instance'lari listelemek icin: `list_scada_instances`.
+
+**YASAK:** Prefix tahmin etmek, tek tek deneme. `find_node_everywhere` tek cagrida hallediyor.

@@ -4,9 +4,10 @@ description: |
   Bir pompanın farklı frekansta ne Q/H/P vereceğini doğru hesaplamak.
   Affinity Laws naif uygulamak YANLIŞTIR — sistem direnci göz ardı edilmiş olur.
   ToplamHm canlı ölçüm = sistem + pompa iş noktası. Projeksiyon: mevcut noktadan başla.
+  annexa = katalog-saha sapma toleransıdır (yaşlanma DEĞİL) — frekans projeksiyonunda H_pompa = H_katalog × annexa.
   Use when: kullanıcı "bu pompayı X Hz'de çalıştırsam ne olur", "en verimli frekans nedir",
   "frekans düşürürsem debi ne olur" gibi sorular sorduğunda.
-  Keywords: frekans, Hz, vfd, surucu, affinity, calisma noktasi, annex a, sistem direnci.
+  Keywords: frekans, Hz, vfd, surucu, affinity, calisma noktasi, annexa, sistem direnci.
 version: "1.0.0"
 ---
 

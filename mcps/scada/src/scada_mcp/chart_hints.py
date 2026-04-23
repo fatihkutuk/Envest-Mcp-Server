@@ -42,7 +42,7 @@ DMA_ANALIZ_SONRASI_GRAFIK_TALIMAT_TR = (
 GENEL_DONGU_ONLEME_TR = (
     "KURAL: Aynı aracı aynı parametrelerle 2 kereden fazla çağırmayın. "
     "Hata alırsanız: (1) farklı parametre deneyin, (2) farklı araç kullanın, (3) kullanıcıya durumu açıklayın. "
-    "Node adı (ör. 'ESKİ', 'Gölkent') bir araç adı DEĞİLDİR — araç adları her zaman prefix ile başlar (ör. envestbulutkorubin_get_node)."
+    "Node adı (ör. 'ESKİ', 'Gölkent') bir araç adı DEĞİLDİR — araç adları her zaman instance prefix'i ile başlar (ör. `<instance_prefix>_get_node`)."
 )
 
 SEVIYE_ANALIZ_SONRASI_GRAFIK_TALIMAT_TR = (

@@ -337,20 +337,29 @@ class MultiMcpDispatchASGI:
                 )
 
         routing_lines.append(
-            "\nNode ismi arama: find_node_everywhere(keywords). Node ID BİLİYORSAN direkt kullan."
-            "\n\nILK ADIM: get_skill('core-rules') — birim, yuvarlama, tag semantiği, pompa seçimi."
-            "\n\nPompa seçimi AKIŞI:"
-            "\n1) Kullanıcı node_id verdi (örn '1192 için pompa seç') → pump_select_for_node(node_id)"
-            "\n   - Tek çağrı, tüm SCADA'larda bakar, nView'dan kuyu/terfi anlar."
-            "\n   - Response'ta selected_tool_prefix + next_action gelir."
-            "\n2) Next_action'ı aynen çağır → canlı Q/H okuyup search_pumps hazır olur."
-            "\n3) Kullanıcı node_id vermediyse → önce find_node_everywhere(name)."
-            "\n\nCanlı tag: ToplamHm, Debimetre. YASAK: XD_BasmaYukseklik, np_*, X*. "
-            "Kuyu→SP, Terfi→CR. Formül: P_hid=(Q×H)/367."
-            "\n\nMevcut pompa sorusu ('kendi pompası ne', 'takılı pompa'): "
-            "<prefix>_get_installed_pump_info(nodeId) — pump_eff + node_param np_* birden okur. "
-            "annexa < 1 → pompa yaşlanmış, H_gerçek = H_katalog × annexa (projeksiyonda kullan)."
-            "\n\nFrekans projeksiyonu: analyze_pump_at_frequency (saf Affinity değil, sistem eğrisi)."
+            "\n\n=== KARAR AKIŞI (dinamik tool/skill seçimi) ==="
+            "\nHer yeni görev için:"
+            "\n1) **list_skills** çağır → skill description'larını gör."
+            "\n   Skill'ler: core-rules (zorunlu ilk okuma), korubin-scada, aqua-devices, "
+            "envest-urunler, database-best-practices. Açıklama/keyword'lerden uygun olanı SEÇ."
+            "\n2) **get_skill('core-rules')** — birim, yuvarlama, tag semantiği, pompa seçimi, çoklu instance."
+            "\n3) Konu spesifikse ilgili skill'i oku (skill description ve keywords eşleşmesiyle)."
+            "\n4) Sadece CANLI SCADA verisi gerekiyorsa SCADA tool'u çağır. Aksi halde skill yeterli."
+            "\n\n=== TEMEL TOOL'LAR (dinamik prefix) ==="
+            "\n- **find_node_everywhere(keywords)** — node ismi (tüm instance'lar), selected_tool_prefix döner"
+            "\n- **list_scada_instances** — mevcut SCADA instance'larını ve prefix'lerini listele"
+            "\n- **pump_select_for_node(node_id)** — node_id biliniyorsa pompa akışı için tek çağrı"
+            "\n- `<prefix>_prepare_pump_selection(nodeId)` — canlı Q/H + hidrolik ağ + çalışma modu + mevcut pompa"
+            "\n- `<prefix>_get_installed_pump_info(nodeId)` — takılı pompa (pump_eff + node_param)"
+            "\n- `<prefix>_analyze_pump_at_frequency(...)` — frekans projeksiyonu (sistem eğrisi + annexa)"
+            "\n- `<prefix>_get_active_alarms`, `<prefix>_export_*` — tipik SCADA operasyonları"
+            "\n\nPrefix'i HARDCODE etme. find_node_everywhere veya pump_select_for_node'un "
+            "response'unda dönen `selected_tool_prefix`'i kullan."
+            "\n\n=== ÖZET KURALLAR ==="
+            "\n- Cihaz/ürün sorusu (AQUA, PLC modeli, modem status, alarm kodu, register, vs) → **skill**"
+            "\n- Canlı durum sorusu (şu an X ne) → **SCADA tool**"
+            "\n- Ürün tanıtımı/katalog → **envest-urunler skill'i** (SCADA'daki node_product_type DEĞİL)"
+            "\n- Pompa seçimi: canlı tag (ToplamHm, Debimetre). YASAK: XD_BasmaYukseklik, np_*, X*. P_hid=(Q×H)/367."
         )
         instructions = "\n".join(routing_lines)
 
@@ -427,7 +436,7 @@ def _register_cross_instance_tools(mcp: Any, scada_cfgs: list) -> None:
 
         Returns: Her instance için ayrı sonuç bloğu. Sonraki çağrılarda
         sonucun `instance_prefix` alanını kullanarak ilgili instance'ın
-        tool'larını çağır (ör. `corumscada_get_node`, `envestbulutkorubin_get_device_tag_values`).
+        tool'larını çağır (ör. `<selected_tool_prefix>get_node`, `<selected_tool_prefix>get_device_tag_values`).
         """
         kw = (keywords or "").strip()
         if not kw:
